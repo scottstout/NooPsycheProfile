@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>K7 Profile Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column — import strip, 24h curve, channel limits, hour grid, export card. Tank-glass blues, LED channel colors as data. */
+:root {
+  --bg: #eef3f6;
+  --panel: #ffffff;
+  --ink: #0f2230;
+  --muted: #5a6f7d;
+  --line: #d3dee5;
+  --accent: #0b6e99;
+  --accent-ink: #ffffff;
+  --grid: #e3ebf0;
+  --danger: #b3261e;
+  --ok: #1d7a46;
+  --ch-white: #8a9aa6;
+  --ch-blue: #2257d6;
+  --ch-green: #1f9a4a;
+  --ch-uv: #7b2fd0;
+  --ch-cyan: #0aa5c2;
+  --ch-red: #d33a2c;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #071520; --panel: #0d2130; --ink: #e2edf3; --muted: #8ea6b5; --line: #1e3a4d;
+    --accent: #38b4e6; --accent-ink: #04121b; --grid: #15303f; --danger: #ff8a80; --ok: #6fd69a;
+    --ch-white: #e8eef2; --ch-blue: #5b8cff; --ch-green: #4cd27c; --ch-uv: #b07bff; --ch-cyan: #39d5ee; --ch-red: #ff6b5c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #071520; --panel: #0d2130; --ink: #e2edf3; --muted: #8ea6b5; --line: #1e3a4d;
+  --accent: #38b4e6; --accent-ink: #04121b; --grid: #15303f; --danger: #ff8a80; --ok: #6fd69a;
+  --ch-white: #e8eef2; --ch-blue: #5b8cff; --ch-green: #4cd27c; --ch-uv: #b07bff; --ch-cyan: #39d5ee; --ch-red: #ff6b5c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+}
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 20px; }
+header { display: grid; gap: 4px; }
+h1 { font: 700 2rem/1.1 var(--font-display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+h2 { font: 600 1.15rem/1.2 var(--font-display); margin: 0; letter-spacing: .02em; text-transform: uppercase; }
+.sub { color: var(--muted); margin: 0; max-width: 65ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.between { justify-content: space-between; }
+button, .btn {
+  font: 600 .9rem var(--font-body); border-radius: 7px; padding: 8px 14px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+}
+button.primary, .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:hover, .btn:hover { border-color: var(--accent); }
+button:focus-visible, .btn:focus-within, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.btn { position: relative; display: inline-flex; align-items: center; }
+.note { font-size: .88rem; color: var(--muted); margin: 0; }
+.status { font-size: .9rem; margin: 0; }
+.status.err { color: var(--danger); }
+.status.ok { color: var(--ok); }
+.label { font: 600 .72rem var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* chart */
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font: 11px var(--font-mono); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: .85rem; cursor: pointer; user-select: none; }
+.chip input { margin: 0; accent-color: var(--accent); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+
+/* limits */
+.limits { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 18px; }
+.limit { display: grid; gap: 2px; }
+.limit .top { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+.limit .top span:last-child { font: 500 .85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.limit input[type=range] { width: 100%; accent-color: var(--c); }
+
+/* grid */
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 3px 4px; text-align: center; border-bottom: 1px solid var(--grid); }
+thead th { position: sticky; top: 0; background: var(--panel); font: 600 .78rem var(--font-body); color: var(--muted); padding-block: 8px; white-space: nowrap; }
+thead th .dot { display: inline-block; vertical-align: -1px; margin-right: 4px; }
+tbody th { font: 500 .85rem var(--font-mono); color: var(--muted); white-space: nowrap; padding-inline: 10px; text-align: left; }
+td input { width: 3.6em; padding: 4px 2px; text-align: center; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--ink); font: .9rem var(--font-mono); }
+td input:hover { border-color: var(--line); }
+td input.min { width: 3.2em; color: var(--muted); }
+tr:hover td, tr:hover th { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* export */
+.export { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 640px) { .export { grid-template-columns: minmax(0, 1fr); } }
+.qr-out { width: 100%; max-width: 260px; border-radius: 6px; border: 1px solid var(--line); background: #fff; display: block; }
+.field { display: grid; gap: 4px; }
+.field input[type=text], textarea {
+  width: 100%; font: .85rem/1.45 var(--font-mono); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px;
+}
+textarea { min-height: 7.5em; resize: vertical; word-break: break-all; }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 10px; }
+.fmt { font: .82rem/1.6 var(--font-mono); overflow-x: auto; background: var(--bg); border-radius: 7px; padding: 10px 12px; margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .chart path { transition: d .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="label">Noo-Psyche K7 Pro · profile QR</span>
+    <h1>K7 Profile Editor</h1>
+    <p class="sub">Load a profile QR you exported to Photos, edit the 24-hour schedule, then save the new QR back to Photos and import it in the Noo-Psyche app.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-load">
+    <div class="row between">
+      <h2 id="h-load">Load</h2>
+      <div class="row">
+        <label class="btn primary" for="file">Choose QR image<input id="file" type="file" accept="image/*"></label>
+        <button id="btn-blank" type="button">Start blank</button>
+      </div>
+    </div>
+    <p id="status" class="status">Showing an example curve. Load your own exported QR to replace it.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-curve">
+    <div class="row between">
+      <h2 id="h-curve">24-hour curve</h2>
+      <div id="legend" class="legend"></div>
+    </div>
+    <svg id="chart" class="chart" viewBox="0 0 920 300" role="img" aria-label="Channel intensity over 24 hours"></svg>
+  </section>
+
+  <section class="panel" aria-labelledby="h-limits">
+    <div class="row between">
+      <h2 id="h-limits">Channel limits</h2>
+      <span class="note">Caps each channel; the schedule scales within it.</span>
+    </div>
+    <div id="limits" class="limits"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-sched">
+    <div class="row between">
+      <h2 id="h-sched">Schedule</h2>
+      <div class="bulk">
+        <span class="label">Selected channels</span>
+        <button type="button" data-bulk="earlier" title="Move the curve one hour earlier">−1 h</button>
+        <button type="button" data-bulk="later" title="Move the curve one hour later">+1 h</button>
+        <button type="button" data-bulk="down" title="Lower every lit point by 1%">−1%</button>
+        <button type="button" data-bulk="up" title="Raise every lit point by 1%">+1%</button>
+      </div>
+    </div>
+    <p class="note">One point per hour. The minute sets where in that hour the point sits; intensities are percent of the channel limit. Uncheck a channel in the curve legend to leave it out of the bulk buttons.</p>
+    <div class="scroll"><table id="grid"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-export">
+    <h2 id="h-export">Export</h2>
+    <div class="export">
+      <img id="qr" class="qr-out" alt="Profile QR code">
+      <div style="display:grid;gap:14px;min-width:0">
+        <div class="field">
+          <label class="label" for="name">Caption under the code</label>
+          <input id="name" type="text" value="K7_Pro_custom" maxlength="40" autocomplete="off">
+        </div>
+        <p class="note">On iPhone, press and hold the code and choose <b>Save to Photos</b>, then import it from the Noo-Psyche app. On a computer, right-click it and save the image.</p>
+        <div class="field">
+          <div class="row between"><label class="label" for="raw">QR contents</label>
+            <div class="row"><button id="btn-copy" type="button">Copy</button><button id="btn-apply" type="button">Apply edited text</button></div></div>
+          <textarea id="raw" spellcheck="false"></textarea>
+          <p id="raw-status" class="status note"></p>
+        </div>
+      </div>
+    </div>
+    <details>
+      <summary>How the code is laid out</summary>
+      <pre class="fmt">WWBBGGUUCCRR#  then 24 ×  HHMM WW BB GG UU CC RR
+└ channel limits, hex %   └ hour, minute, channel %, all hex</pre>
+      <p class="note">Plain text, byte mode, error correction H. The channel order is White, Blue, Green, UV, Cyan, Red (as the K7 Pro III uses it). If a code has a different number of channels, the editor reads the count from the limits and labels them Channel 1, 2, and so on.</p>
+    </details>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="profile.js"></script>
+<script>
+(function () {
+  'use strict';
+  var P = window.NooProfile;
+  var COLOR = { White: '--ch-white', Blue: '--ch-blue', Green: '--ch-green', UV: '--ch-uv', Cyan: '--ch-cyan', Red: '--ch-red' };
+  var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
+  var $ = function (id) { return document.getElementById(id); };
+
+  function example() {
+    var p = P.blank();
+    // Example reef curve: blues ramp 08:00, peak 13:00–16:00, fade by 21:00.
+    var shape = [0,0,0,0,0,0,0,0,4,12,25,40,55,65,65,65,55,40,22,8,2,0,0,0];
+    var mix = [0.35, 1, 0.15, 0.6, 0.8, 0.12];
+    p.slots.forEach(function (s, h) { s.values = mix.map(function (m) { return Math.round(shape[h] * m); }); });
+    p.slots[20].values[3] = 4; p.slots[21].values[1] = 1;
+    return p;
+  }
+
+  var state = { profile: example(), active: [] };
+  try { var saved = localStorage.getItem('k7-profile'); if (saved) { state.profile = P.parse(saved); setStatus('Restored your last edit from this browser.', 'ok'); } } catch (e) {}
+  try { var nm = localStorage.getItem('k7-name'); if (nm) $('name').value = nm; } catch (e) {}
+
+  function colorVar(name, i) { return 'var(' + (COLOR[name] || FALLBACK[i % FALLBACK.length]) + ')'; }
+  function setStatus(msg, kind) { var el = $('status'); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function resetActive() { state.active = state.profile.channels.map(function () { return true; }); }
+  resetActive();
+
+  // ---------- chart ----------
+  var W = 920, H = 300, L = 40, R = 12, T = 12, B = 30;
+  function x(min) { return L + (min / 1440) * (W - L - R); }
+  function y(v) { return T + (1 - v / 100) * (H - T - B); }
+  function drawChart() {
+    var svg = $('chart'), p = state.profile, out = [];
+    for (var v = 0; v <= 100; v += 25) {
+      out.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--grid)" stroke-width="1"/>');
+      out.push('<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '%</text>');
+    }
+    for (var h = 0; h <= 24; h += 3) {
+      out.push('<line x1="' + x(h * 60) + '" x2="' + x(h * 60) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--grid)" stroke-width="1"/>');
+      out.push('<text x="' + x(h * 60) + '" y="' + (H - 10) + '" text-anchor="middle">' + pad(h % 24) + ':00</text>');
+    }
+    p.channels.forEach(function (name, c) {
+      if (!state.active[c]) return;
+      var pts = p.slots.map(function (s) { return [s.hour * 60 + s.minute, s.values[c] * p.limits[c] / 100]; });
+      pts.sort(function (a, b) { return a[0] - b[0]; });
+      if (pts.length) pts.push([1440, pts[0][1]]);
+      var d = pts.map(function (q, i) { return (i ? 'L' : 'M') + x(q[0]).toFixed(1) + ' ' + y(q[1]).toFixed(1); }).join(' ');
+      var col = colorVar(name, c);
+      out.push('<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round"/>');
+      pts.slice(0, -1).forEach(function (q) { out.push('<circle cx="' + x(q[0]).toFixed(1) + '" cy="' + y(q[1]).toFixed(1) + '" r="2.6" fill="' + col + '"/>'); });
+    });
+    svg.innerHTML = out.join('');
+  }
+
+  function drawLegend() {
+    $('legend').innerHTML = state.profile.channels.map(function (name, c) {
+      return '<label class="chip"><input type="checkbox" data-ch="' + c + '"' + (state.active[c] ? ' checked' : '') +
+        '><span class="dot" style="--c:' + colorVar(name, c) + '"></span>' + name + '</label>';
+    }).join('');
+  }
+  $('legend').addEventListener('change', function (e) {
+    var c = e.target.getAttribute('data-ch'); if (c == null) return;
+    state.active[+c] = e.target.checked; drawChart();
+  });
+
+  // ---------- limits ----------
+  function drawLimits() {
+    $('limits').innerHTML = state.profile.channels.map(function (name, c) {
+      var v = state.profile.limits[c];
+      return '<div class="limit" style="--c:' + colorVar(name, c) + '"><label class="top" for="lim' + c + '"><span><span class="dot" style="display:inline-block;margin-right:6px"></span>' + name +
+        '</span><span id="limv' + c + '">' + v + '%</span></label><input id="lim' + c + '" type="range" min="0" max="100" value="' + v + '" data-lim="' + c + '"></div>';
+    }).join('');
+  }
+  $('limits').addEventListener('input', function (e) {
+    var c = e.target.getAttribute('data-lim'); if (c == null) return;
+    state.profile.limits[+c] = +e.target.value; $('limv' + c).textContent = e.target.value + '%';
+    changed(false);
+  });
+
+  // ---------- grid ----------
+  function drawGrid() {
+    var p = state.profile, h = '<thead><tr><th>Hour</th><th>Min</th>';
+    p.channels.forEach(function (name, c) { h += '<th><span class="dot" style="--c:' + colorVar(name, c) + '"></span>' + name + '</th>'; });
+    h += '</tr></thead><tbody>';
+    p.slots.forEach(function (s, i) {
+      h += '<tr><th>' + pad(s.hour) + ':' + pad(s.minute) + '</th><td><input class="min" inputmode="numeric" aria-label="Minute for hour ' + s.hour + '" data-s="' + i + '" data-c="m" value="' + s.minute + '"></td>';
+      s.values.forEach(function (v, c) {
+        h += '<td><input inputmode="numeric" aria-label="' + p.channels[c] + ' at hour ' + s.hour + '" data-s="' + i + '" data-c="' + c + '" value="' + v + '"></td>';
+      });
+      h += '</tr>';
+    });
+    $('grid').innerHTML = h + '</tbody>';
+  }
+  $('grid').addEventListener('change', function (e) {
+    var t = e.target, i = t.getAttribute('data-s'), c = t.getAttribute('data-c'); if (i == null) return;
+    var s = state.profile.slots[+i], n = parseInt(t.value, 10); if (!isFinite(n)) n = 0;
+    if (c === 'm') { n = Math.max(0, Math.min(59, n)); s.minute = n; t.closest('tr').firstChild.textContent = pad(s.hour) + ':' + pad(n); }
+    else { n = Math.max(0, Math.min(100, n)); s.values[+c] = n; }
+    t.value = n; changed(false);
+  });
+  $('grid').addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    var t = e.target, i = t.getAttribute('data-s'); if (i == null) return;
+    var next = document.querySelector('#grid input[data-s="' + (+i + (e.key === 'ArrowDown' ? 1 : -1)) + '"][data-c="' + t.getAttribute('data-c') + '"]');
+    if (next) { e.preventDefault(); t.dispatchEvent(new Event('change', { bubbles: true })); next.focus(); next.select(); }
+  });
+
+  document.querySelector('.bulk').addEventListener('click', function (e) {
+    var op = e.target.getAttribute('data-bulk'); if (!op) return;
+    var p = state.profile, n = p.slots.length;
+    p.channels.forEach(function (_, c) {
+      if (!state.active[c]) return;
+      var col = p.slots.map(function (s) { return s.values[c]; });
+      p.slots.forEach(function (s, i) {
+        if (op === 'earlier') s.values[c] = col[(i + 1) % n];
+        else if (op === 'later') s.values[c] = col[(i - 1 + n) % n];
+        else if (op === 'down' && col[i] > 0) s.values[c] = col[i] - 1;
+        else if (op === 'up' && col[i] > 0 && col[i] < 100) s.values[c] = col[i] + 1;
+      });
+    });
+    changed(true);
+  });
+
+  // ---------- export ----------
+  function drawQR(text) {
+    var qr = qrcode(0, 'H'); qr.addData(text, 'Byte'); qr.make();
+    var count = qr.getModuleCount(), cell = 8, quiet = 4, size = (count + quiet * 2) * cell, cap = 44;
+    var cv = document.createElement('canvas'); cv.width = size; cv.height = size + cap;
+    var g = cv.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
+    g.fillStyle = '#000000';
+    for (var r = 0; r < count; r++) for (var c = 0; c < count; c++) if (qr.isDark(r, c)) g.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
+    g.font = '24px "Barlow", Arial, sans-serif'; g.textAlign = 'center';
+    g.fillText($('name').value || '', size / 2, size + 20);
+    $('qr').src = cv.toDataURL('image/png');
+  }
+
+  function changed(full) {
+    var text = P.serialize(state.profile);
+    if (full) { drawLimits(); drawGrid(); }
+    drawChart();
+    $('raw').value = text; $('raw-status').textContent = text.length + ' characters, ' + state.profile.channels.length + ' channels, ' + state.profile.slots.length + ' points.';
+    $('raw-status').className = 'status note';
+    try { drawQR(text); } catch (e) { $('raw-status').textContent = 'Could not draw the QR code: ' + e.message; $('raw-status').className = 'status err'; }
+    try { localStorage.setItem('k7-profile', text); } catch (e) {}
+  }
+  function load(profile) { state.profile = profile; resetActive(); drawLegend(); changed(true); }
+
+  $('name').addEventListener('input', function () {
+    try { localStorage.setItem('k7-name', $('name').value); } catch (e) {}
+    drawQR($('raw').value);
+  });
+  $('btn-blank').addEventListener('click', function () { load(P.blank(state.profile.channels)); setStatus('Started a blank profile with every channel off.', 'ok'); });
+  $('btn-apply').addEventListener('click', function () {
+    try { load(P.parse($('raw').value)); $('raw-status').textContent = 'Applied.'; $('raw-status').className = 'status ok'; }
+    catch (e) { $('raw-status').textContent = e.message; $('raw-status').className = 'status err'; }
+  });
+  $('btn-copy').addEventListener('click', function () {
+    var ta = $('raw');
+    navigator.clipboard && navigator.clipboard.writeText(ta.value).then(function () { $('raw-status').textContent = 'Copied.'; }, function () { ta.select(); });
+    if (!navigator.clipboard) ta.select();
+  });
+
+  // ---------- import ----------
+  function decodeImage(img) {
+    var scales = [1, 0.5, 1.5];
+    for (var k = 0; k < scales.length; k++) {
+      var w = Math.round(Math.min(img.naturalWidth, 1400) * scales[k]);
+      var h = Math.round(img.naturalHeight * w / img.naturalWidth);
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+      var res = jsQR(g.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'attemptBoth' });
+      if (res) return res.data;
+    }
+    return null;
+  }
+  $('file').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    setStatus('Reading ' + f.name + '…');
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onload = function () {
+      var text = decodeImage(img); URL.revokeObjectURL(url);
+      if (!text) { setStatus('No QR code found in that image. Use the original exported image, not a cropped screenshot.', 'err'); return; }
+      try {
+        var p = P.parse(text); load(p);
+        setStatus('Loaded ' + f.name + ': ' + p.channels.length + ' channels, ' + p.slots.length + ' points.', 'ok');
+        var base = f.name.replace(/\.[^.]+$/, ''); if (base) { $('name').value = base; drawQR($('raw').value); }
+      } catch (e) {
+        $('raw').value = text;
+        setStatus('The QR code was read, but it does not match the known layout: ' + e.message + ' Its raw contents are in the Export section.', 'err');
+      }
+    };
+    img.onerror = function () { setStatus('That file could not be opened as an image. If it is HEIC, export it from Photos as JPEG or PNG.', 'err'); };
+    img.src = url;
+    this.value = '';
+  });
+
+  drawLegend(); changed(true);
+})();
+</script>
+</body>
+</html>
