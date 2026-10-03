@@ -115,6 +115,29 @@ textarea { min-height: 7.5em; resize: vertical; word-break: break-all; }
 details summary { cursor: pointer; font-weight: 600; }
 details[open] summary { margin-bottom: 10px; }
 .fmt { font: .82rem/1.6 var(--font-mono); overflow-x: auto; background: var(--bg); border-radius: 7px; padding: 10px 12px; margin: 0; }
+/* builder */
+.build { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.build .wide { grid-column: 1 / -1; max-width: 420px; }
+.unit { display: flex; align-items: center; gap: 6px; }
+.unit span { color: var(--muted); font-size: .9rem; }
+.build input[type=number], .panel input[type=number], select {
+  font: 500 .95rem var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; width: 100%; min-width: 0;
+}
+.unit input[type=number] { width: 6em; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { flex: 1; border: 0; border-radius: 0; padding: 7px 8px; font-weight: 500; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-checked="true"], .steps button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.steps button { display: grid; gap: 0; padding: 8px 4px; text-align: center; line-height: 1.2; }
+.steps button b { font: 700 1.05rem var(--font-display); }
+.steps button small { font: .75rem var(--font-mono); opacity: .85; font-variant-numeric: tabular-nums; }
+.chip.check { justify-self: start; }
+.tips { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 70ch; font-size: .92rem; }
+.watts { margin: 0; font-size: .95rem; }
+.watts b { font: 700 1.05rem var(--font-display); }
+.watts .warn { color: var(--danger); font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .chart path { transition: d .15s; } }
 </style>
 </head>
@@ -123,18 +146,79 @@ details[open] summary { margin-bottom: 10px; }
   <header>
     <span class="label">Noo-Psyche K7 Pro · profile QR</span>
     <h1>K7 Profile Editor</h1>
-    <p class="sub">Load a profile QR you exported to Photos, edit the 24-hour schedule, then save the new QR back to Photos and import it in the Noo-Psyche app.</p>
+    <p class="sub">Build a gentle schedule for your tank, or load a profile QR you exported to Photos. Then save the new QR to Photos and import it in the Noo-Psyche app.</p>
   </header>
+
+  <section class="panel" aria-labelledby="h-build">
+    <div class="row between">
+      <h2 id="h-build">Build a gentle profile</h2>
+      <span class="note">Peak capped at 1 W per gallon</span>
+    </div>
+    <div class="build">
+      <div class="field">
+        <label class="label" for="gal">Tank size</label>
+        <div class="unit"><input id="gal" type="number" min="1" max="300" step="1" value="15" inputmode="numeric"><span>gal</span></div>
+      </div>
+      <div class="field">
+        <label class="label" for="on">Lights on</label>
+        <select id="on"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="off">Lights off</label>
+        <select id="off"></select>
+      </div>
+      <div class="field wide">
+        <span class="label">Color</span>
+        <div class="seg" id="look" role="radiogroup" aria-label="Color"></div>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Strength step</span>
+      <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
+      <p class="note" id="step-note"></p>
+    </div>
+    <label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label>
+    <div class="row">
+      <button id="btn-build" class="primary" type="button">Use this profile</button>
+      <span id="build-sum" class="note"></span>
+    </div>
+    <details>
+      <summary>Ramping up safely</summary>
+      <ul class="tips">
+        <li>Start at step 1. Every two weeks, if the zoanthids open fully and the green star polyps spread out like grass, move up one step.</li>
+        <li>If zoanthids stay closed, shrink, or lose color, or the GSP stays pulled in, go back one step and stay there for two weeks.</li>
+        <li>Step 6 is the 1 W per gallon rule of thumb. GSP and most zoanthids don't need more than that, and many do well below it.</li>
+        <li>The light fades between the hourly points, so lights-on and lights-off are gentle ramps rather than switches.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Match the app's watt reading</summary>
+      <p class="note">Watts here are estimated from the K7 Pro IV's 100 W rating. To make them exact, import a profile into the app, read the watts it shows at the brightest time, and enter it here. Estimates and new profiles then use that correction.</p>
+      <div class="row">
+        <div class="field">
+          <label class="label" for="fixture">Fixture rating</label>
+          <div class="unit"><input id="fixture" type="number" min="10" max="400" value="100" inputmode="numeric"><span>W</span></div>
+        </div>
+        <div class="field">
+          <label class="label" for="appw">App shows at peak</label>
+          <div class="unit"><input id="appw" type="number" min="0" step="0.1" inputmode="decimal" placeholder="e.g. 8"><span>W</span></div>
+        </div>
+        <button id="btn-cal" type="button" style="align-self:end">Apply to current profile</button>
+        <button id="btn-cal-reset" type="button" style="align-self:end">Reset</button>
+      </div>
+      <p id="cal-status" class="status note"></p>
+    </details>
+  </section>
 
   <section class="panel" aria-labelledby="h-load">
     <div class="row between">
-      <h2 id="h-load">Load</h2>
+      <h2 id="h-load">Or load an existing profile</h2>
       <div class="row">
         <label class="btn primary" for="file">Choose QR image<input id="file" type="file" accept="image/*"></label>
         <button id="btn-blank" type="button">Start blank</button>
       </div>
     </div>
-    <p id="status" class="status">Showing an example curve. Load your own exported QR to replace it.</p>
+    <p id="status" class="status">Showing step 1 for a 15-gallon tank. Load a QR you exported to edit it instead.</p>
   </section>
 
   <section class="panel" aria-labelledby="h-curve">
@@ -142,6 +226,7 @@ details[open] summary { margin-bottom: 10px; }
       <h2 id="h-curve">24-hour curve</h2>
       <div id="legend" class="legend"></div>
     </div>
+    <p id="watts" class="watts"></p>
     <svg id="chart" class="chart" viewBox="0 0 920 300" role="img" aria-label="Channel intensity over 24 hours"></svg>
   </section>
 
@@ -206,17 +291,17 @@ details[open] summary { margin-bottom: 10px; }
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  function example() {
-    var p = P.blank();
-    // Example reef curve: blues ramp 08:00, peak 13:00–16:00, fade by 21:00.
-    var shape = [0,0,0,0,0,0,0,0,4,12,25,40,55,65,65,65,55,40,22,8,2,0,0,0];
-    var mix = [0.35, 1, 0.15, 0.6, 0.8, 0.12];
-    p.slots.forEach(function (s, h) { s.values = mix.map(function (m) { return Math.round(shape[h] * m); }); });
-    p.slots[20].values[3] = 4; p.slots[21].values[1] = 1;
-    return p;
+  var STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; // watts per gallon at peak
+  var opts = { gal: 15, on: 10, off: 20, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
+  try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
+  function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
+  function stepWatts(i) { return opts.gal * STEPS[i]; }
+  function built() {
+    return P.build({ on: opts.on, off: opts.off, ramp: 2, peakWatts: stepWatts(opts.step), fixtureWatts: opts.fixture,
+      factor: opts.factor, look: opts.look, warmEvening: opts.warm });
   }
 
-  var state = { profile: example(), active: [] };
+  var state = { profile: built(), active: [] };
   try { var saved = localStorage.getItem('k7-profile'); if (saved) { state.profile = P.parse(saved); setStatus('Restored your last edit from this browser.', 'ok'); } } catch (e) {}
   try { var nm = localStorage.getItem('k7-name'); if (nm) $('name').value = nm; } catch (e) {}
 
@@ -229,6 +314,8 @@ details[open] summary { margin-bottom: 10px; }
 
   // ---------- chart ----------
   var W = 920, H = 300, L = 40, R = 12, T = 12, B = 30;
+  function fitChart() { W = $('chart').getBoundingClientRect().width < 600 ? 460 : 920; $('chart').setAttribute('viewBox', '0 0 ' + W + ' ' + H); }
+  window.addEventListener('resize', function () { var w = W; fitChart(); if (w !== W) drawChart(); });
   function x(min) { return L + (min / 1440) * (W - L - R); }
   function y(v) { return T + (1 - v / 100) * (H - T - B); }
   function drawChart() {
@@ -237,9 +324,10 @@ details[open] summary { margin-bottom: 10px; }
       out.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--grid)" stroke-width="1"/>');
       out.push('<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '%</text>');
     }
-    for (var h = 0; h <= 24; h += 3) {
+    var step = W < 600 ? 6 : 3;
+    for (var h = 0; h <= 24; h += step) {
       out.push('<line x1="' + x(h * 60) + '" x2="' + x(h * 60) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--grid)" stroke-width="1"/>');
-      out.push('<text x="' + x(h * 60) + '" y="' + (H - 10) + '" text-anchor="middle">' + pad(h % 24) + ':00</text>');
+      out.push('<text x="' + x(h * 60) + '" y="' + (H - 10) + '" text-anchor="' + (h === 24 ? 'end' : h === 0 ? 'start' : 'middle') + '">' + pad(h % 24) + ':00</text>');
     }
     p.channels.forEach(function (name, c) {
       if (!state.active[c]) return;
@@ -340,7 +428,7 @@ details[open] summary { margin-bottom: 10px; }
   function changed(full) {
     var text = P.serialize(state.profile);
     if (full) { drawLimits(); drawGrid(); }
-    drawChart();
+    drawChart(); drawWatts();
     $('raw').value = text; $('raw-status').textContent = text.length + ' characters, ' + state.profile.channels.length + ' channels, ' + state.profile.slots.length + ' points.';
     $('raw-status').className = 'status note';
     try { drawQR(text); } catch (e) { $('raw-status').textContent = 'Could not draw the QR code: ' + e.message; $('raw-status').className = 'status err'; }
@@ -397,6 +485,60 @@ details[open] summary { margin-bottom: 10px; }
     this.value = '';
   });
 
+  // ---------- builder ----------
+  function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }
+  function drawWatts() {
+    var pk = P.peak(state.profile, opts.fixture, opts.factor), w = pk.watts, per = w / opts.gal;
+    var el = $('watts');
+    if (!pk.slot) { el.textContent = 'Lights are off all day.'; return; }
+    el.innerHTML = 'Peak <b>≈ ' + fmtW(w) + ' W</b> at ' + pad(pk.slot.hour) + ':' + pad(pk.slot.minute) +
+      ' · ' + per.toFixed(2) + ' W/gal for ' + opts.gal + ' gal' + (opts.factor === 1 ? ' (estimate)' : ' (matched to app)') +
+      (per > 1.05 ? ' <span class="warn">Above 1 W/gal: strong for low-light corals.</span>' : '');
+  }
+  function hourOpts(sel, val) {
+    var h = ''; for (var i = 0; i < 24; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + pad(i) + ':00</option>';
+    sel.innerHTML = h;
+  }
+  function drawBuilder() {
+    $('gal').value = opts.gal; $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
+    hourOpts($('on'), opts.on); hourOpts($('off'), opts.off);
+    $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
+      return '<button type="button" role="radio" data-look="' + k + '" aria-checked="' + (k === opts.look) + '">' + P.LOOKS[k].label + '</button>';
+    }).join('');
+    $('steps').innerHTML = STEPS.map(function (r, i) {
+      return '<button type="button" role="radio" data-step="' + i + '" aria-checked="' + (i === opts.step) + '"><b>' + (i + 1) + '</b><small>' + fmtW(stepWatts(i)) + ' W</small></button>';
+    }).join('');
+    var lit = opts.off - opts.on;
+    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + STEPS[opts.step].toFixed(1) + ' W/gal (' + fmtW(stepWatts(opts.step)) + ' W). ' +
+      (opts.step === 0 ? 'Start here.' : opts.step === 5 ? 'Full rule-of-thumb target.' : 'Move up only after two good weeks on the step below.');
+    $('build-sum').textContent = lit >= 4 ? 'Light ' + lit + ' h: 2 h fade in, ' + (lit - 4) + ' h at peak, 2 h fade out.' : 'Lights-off must be at least 4 hours after lights-on.';
+    $('btn-build').disabled = lit < 4;
+  }
+  function builderChange() { saveOpts(); drawBuilder(); }
+  $('gal').addEventListener('change', function () { var v = Math.round(+this.value); opts.gal = isFinite(v) && v > 0 ? Math.min(300, v) : 15; builderChange(); drawWatts(); });
+  $('on').addEventListener('change', function () { opts.on = +this.value; builderChange(); });
+  $('off').addEventListener('change', function () { opts.off = +this.value; builderChange(); });
+  $('warm').addEventListener('change', function () { opts.warm = this.checked; builderChange(); });
+  $('look').addEventListener('click', function (e) { var k = e.target.closest('[data-look]'); if (k) { opts.look = k.getAttribute('data-look'); builderChange(); } });
+  $('steps').addEventListener('click', function (e) { var k = e.target.closest('[data-step]'); if (k) { opts.step = +k.getAttribute('data-step'); builderChange(); } });
+  $('btn-build').addEventListener('click', function () {
+    load(built());
+    var nm = 'K7_' + opts.gal + 'gal_step' + (opts.step + 1);
+    $('name').value = nm; try { localStorage.setItem('k7-name', nm); } catch (e) {}
+    drawQR($('raw').value);
+    setStatus('Built step ' + (opts.step + 1) + ' (' + P.LOOKS[opts.look].label + ') for a ' + opts.gal + '-gallon tank. Save the code below to Photos.', 'ok');
+  });
+  $('fixture').addEventListener('change', function () { var v = +this.value; opts.fixture = v > 0 ? v : 100; builderChange(); drawWatts(); });
+  $('btn-cal').addEventListener('click', function () {
+    var app = parseFloat($('appw').value), est = P.peak(state.profile, opts.fixture, 1).watts;
+    if (!(app > 0) || !(est > 0)) { $('cal-status').textContent = 'Enter the watts the app shows for the profile loaded here.'; $('cal-status').className = 'status err'; return; }
+    opts.factor = app / est; saveOpts(); drawBuilder(); drawWatts();
+    $('cal-status').textContent = 'Matched: estimates now scale by ' + opts.factor.toFixed(2) + '. Press "Use this profile" to rebuild at the corrected strength.';
+    $('cal-status').className = 'status ok';
+  });
+  $('btn-cal-reset').addEventListener('click', function () { opts.factor = 1; saveOpts(); drawWatts(); $('cal-status').textContent = 'Back to the estimate from the fixture rating.'; $('cal-status').className = 'status note'; });
+
+  drawBuilder(); fitChart();
   drawLegend(); changed(true);
 })();
 </script>

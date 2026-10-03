@@ -8,11 +8,19 @@ the 24-hour schedule and channel limits, and makes a new QR code to import.
 Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It needs
 `profile.js` next to it and loads two small QR libraries from public CDNs.
 
-1. **Load**: choose the exported QR image from Photos.
+1. **Build** a gentle profile: enter the tank size, lights-on and lights-off
+   times, and a color look, then pick a strength step. Step 1 peaks at
+   0.5 W per gallon and step 6 at 1 W per gallon. The builder never goes higher.
+   Move up one step every two weeks while the corals look happy.
+   **Or load** an exported QR image from Photos.
 2. **Edit**: drag the channel limits, type values into the hourly grid, or shift
    and scale the curve with the bulk buttons.
 3. **Export**: press and hold the generated code and choose *Save to Photos*,
    then import it in the Noo-Psyche app.
+
+Watts are estimated from the fixture rating (100 W for the K7 Pro IV), assuming
+each channel draws an equal share. To correct the estimate, enter the wattage the
+app reports for a loaded profile under *Match the app's watt reading*.
 
 ## QR format
 
