@@ -18,8 +18,12 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    above the target.
    Or tap **Make all 6 steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
-   **Or load** an exported QR image from Photos.
-2. **Edit**: drag the channel limits, type values into the hourly grid, or shift
+   **Or load** an exported QR image from Photos, such as a stock or shared
+   profile, and tap **Use as shape for the steps**: the six steps then scale that
+   profile's own curve (timing, colors, moonlight) to your target instead of the
+   builder's.
+2. **Inspect and edit**: tap or drag on the curve to read every channel at that
+   time. Drag the channel limits, type values into the hourly grid, or shift
    and scale the curve with the bulk buttons.
 3. **Export**: every generated image has a label printed above the code: the
    name, estimated peak watts and share of the target, total light hours, main
