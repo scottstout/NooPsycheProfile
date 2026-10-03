@@ -75,7 +75,14 @@ button:focus-visible, .btn:focus-within, input:focus-visible, textarea:focus-vis
 .label { font: 600 .72rem var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
 /* chart */
-.chart { width: 100%; height: auto; display: block; }
+.chart { width: 100%; height: auto; display: block; touch-action: pan-y; cursor: crosshair; }
+.chart:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.at { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.at .t { font: 700 1.3rem var(--font-display); font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.at .w { font: 500 .9rem var(--font-mono); color: var(--muted); }
+.at .ch { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; }
+.at .ch b { font: 500 .9rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.at .ch.off { opacity: .45; }
 .chart text { fill: var(--muted); font: 11px var(--font-mono); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: .85rem; cursor: pointer; user-select: none; }
@@ -125,11 +132,15 @@ details[open] summary { margin-bottom: 10px; }
 .card button { padding: 5px 10px; font-size: .82rem; }
 .card .acts { display: flex; gap: 6px; }
 .chip .pk { font: .78rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* shape */
+.shape-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.shape-bar b { font: 600 1rem var(--font-body); }
 /* builder */
 .build { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 .build .wide { grid-column: 1 / -1; max-width: 420px; }
 .unit { display: flex; align-items: center; gap: 6px; }
 .unit span { color: var(--muted); font-size: .9rem; }
+.nudge { padding: 6px 12px; font-size: 1rem; line-height: 1; }
 .build input[type=number], .panel input[type=number], select {
   font: 500 .95rem var(--font-body); color: var(--ink); background: var(--bg);
   border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; width: 100%; min-width: 0;
@@ -156,19 +167,38 @@ details[open] summary { margin-bottom: 10px; }
   <header>
     <span class="label">Noo-Psyche K7 Pro · profile QR</span>
     <h1>K7 Profile Editor</h1>
-    <p class="sub">Build a gentle schedule for your tank, or load a profile QR you exported to Photos. Then save the new QR to Photos and import it in the Noo-Psyche app.</p>
+    <p class="sub">Build a lighting schedule for your tank, or load a profile QR you exported to Photos. Then save the new QR to Photos and import it in the Noo-Psyche app.</p>
   </header>
 
   <section class="panel" aria-labelledby="h-build">
     <div class="row between">
-      <h2 id="h-build">Build a gentle profile</h2>
-      <span class="note">Peak capped at 1 W per gallon</span>
+      <h2 id="h-build">Build a profile</h2>
+      <span class="note">Never goes above your target</span>
     </div>
-    <div class="build">
-      <div class="field">
-        <label class="label" for="gal">Tank size</label>
-        <div class="unit"><input id="gal" type="number" min="1" max="300" step="1" value="15" inputmode="numeric"><span>gal</span></div>
+    <div id="shape-bar" class="shape-bar" hidden>
+      <div><span class="label">Shape</span><br><b id="shape-name"></b><br><span class="note" id="shape-sum"></span></div>
+      <button id="btn-shape-off" type="button">Back to the builder</button>
+    </div>
+    <div class="field">
+      <label class="label" for="target">Full-strength target</label>
+      <div class="unit"><button type="button" class="nudge" data-nudge="-1" aria-label="1 watt less">−</button><input id="target" type="number" min="1" max="400" step="0.5" value="15" inputmode="decimal"><button type="button" class="nudge" data-nudge="1" aria-label="1 watt more">+</button><span>W</span></div>
+    </div>
+    <details id="calc">
+      <summary>Work it out from tank size</summary>
+      <p class="note">A common rule of thumb is about 1 W of LED per gallon at full strength. With more than one light, each light gets its share.</p>
+      <div class="row">
+        <div class="field">
+          <label class="label" for="gal">Tank size</label>
+          <div class="unit"><input id="gal" type="number" min="1" max="1000" step="1" value="15" inputmode="numeric"><span>gal</span></div>
+        </div>
+        <div class="field">
+          <label class="label" for="lights">Lights on the tank</label>
+          <div class="unit"><input id="lights" type="number" min="1" max="12" step="1" value="1" inputmode="numeric"><span>lights</span></div>
+        </div>
+        <button id="btn-calc" type="button" style="align-self:end">Use <span id="calc-w">15</span> W</button>
       </div>
+    </details>
+    <div class="build" id="shape-inputs">
       <div class="field">
         <label class="label" for="on">Lights on</label>
         <select id="on"></select>
@@ -192,24 +222,24 @@ details[open] summary { margin-bottom: 10px; }
     </div>
     <div class="field">
       <span class="label">Strength step</span>
+      <p class="note">Step 6 is your full target. Steps 1 to 5 run from 25% to 85% of it, 15 points apart, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to step 6.</p>
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
+      <details>
+        <summary>Stepping up while corals acclimate</summary>
+        <ul class="tips">
+          <li>Start at step 1, or at the highest step that's still below where your corals look happiest. Every week or two, if the corals look healthy (zoanthids open fully, green star polyps spread out like grass), move up one step.</li>
+          <li>If corals stay closed, shrink, or lose color, go back one step and stay there for a week or two.</li>
+          <li>If you set the target with the 1 W per gallon rule of thumb, note that GSP and most zoanthids don't need more than that, and many do well below it.</li>
+        </ul>
+      </details>
     </div>
-    <div class="row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
+    <div class="row" id="warm-row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
       <button id="btn-set" type="button">Make all 6 steps</button>
     </div>
     <p id="build-sum" class="note"></p>
-    <details>
-      <summary>Ramping up safely</summary>
-      <ul class="tips">
-        <li>Start at step 1. Every two weeks, if the zoanthids open fully and the green star polyps spread out like grass, move up one step.</li>
-        <li>If zoanthids stay closed, shrink, or lose color, or the GSP stays pulled in, go back one step and stay there for two weeks.</li>
-        <li>Step 6 is the 1 W per gallon rule of thumb. GSP and most zoanthids don't need more than that, and many do well below it.</li>
-        <li>The light fades between the hourly points, so lights-on and lights-off are gentle ramps rather than switches.</li>
-      </ul>
-    </details>
     <details>
       <summary>Match the app's watt reading</summary>
       <p class="note">Watts here are estimated from the K7 Pro IV's 100 W rating. To make them exact, import a profile into the app, read the watts it shows at the brightest time, and enter it here. Estimates and new profiles then use that correction.</p>
@@ -247,7 +277,22 @@ details[open] summary { margin-bottom: 10px; }
         <button id="btn-blank" type="button">Start blank</button>
       </div>
     </div>
-    <p id="status" class="status">Showing step 1 for a 15-gallon tank. Load a QR you exported to edit it instead.</p>
+    <p id="status" class="status">Showing step 1 of a 15 W target. Load a QR you exported to edit it instead.</p>
+    <div class="row">
+      <span class="label">Noo-Psyche stock profiles</span>
+      <button type="button" data-stock="LPS">LPS</button>
+      <button type="button" data-stock="SL">Mixed (S/L)</button>
+      <button type="button" data-stock="SPS">SPS</button>
+    </div>
+    <div class="row">
+      <span class="label">Community</span>
+      <button type="button" data-stock="BA">BeanAnimal S/L</button>
+      <span class="note">Each color on its own bell curve, peaking at different times. From <a href="https://beananimal.com/tools/noo-psyche-k7-profile-generator/" target="_blank" rel="noopener">BeanAnimal's generator</a>.</span>
+    </div>
+    <div class="row">
+      <button id="btn-use-shape" type="button">Use as shape for the steps</button>
+      <span class="note">Keeps the loaded profile's timing, colors and moonlight; the steps scale it to your target. Name it under Export first to name the shape.</span>
+    </div>
   </section>
 
   <section class="panel" aria-labelledby="h-curve">
@@ -256,7 +301,9 @@ details[open] summary { margin-bottom: 10px; }
       <div id="legend" class="legend"></div>
     </div>
     <p id="watts" class="watts"></p>
-    <svg id="chart" class="chart" viewBox="0 0 920 300" role="img" aria-label="Channel intensity over 24 hours"></svg>
+    <svg id="chart" class="chart" viewBox="0 0 920 300" role="slider" tabindex="0" aria-label="Time of day on the curve" aria-valuemin="0" aria-valuemax="1439"></svg>
+    <div id="at" class="at" aria-live="polite"></div>
+    <p class="note">Tap or drag on the curve to read every channel at that time. Between points, values assume the light fades evenly.</p>
   </section>
 
   <section class="panel" aria-labelledby="h-limits">
@@ -304,7 +351,7 @@ details[open] summary { margin-bottom: 10px; }
       <summary>How the code is laid out</summary>
       <pre class="fmt">WWBBGGUUCCRR#  then 24 ×  HHMM WW BB GG UU CC RR
 └ channel limits, hex %   └ hour, minute, channel %, all hex</pre>
-      <p class="note">Plain text, byte mode, error correction H. The channel order is White, Blue, Green, UV, Cyan, Red (as the K7 Pro III uses it). If a code has a different number of channels, the editor reads the count from the limits and labels them Channel 1, 2, and so on.</p>
+      <p class="note">Plain text, byte mode, error correction H. The channel order is White, Royal Blue, Green, UV, Cyan, Red, as on the K7 Pro. If a code has a different number of channels, the editor reads the count from the limits and labels them Channel 1, 2, and so on.</p>
     </details>
   </section>
 </div>
@@ -317,20 +364,28 @@ details[open] summary { margin-bottom: 10px; }
 (function () {
   'use strict';
   var P = window.NooProfile;
-  var COLOR = { White: '--ch-white', Blue: '--ch-blue', Green: '--ch-green', UV: '--ch-uv', Cyan: '--ch-cyan', Red: '--ch-red' };
+  var COLOR = { White: '--ch-white', 'Royal Blue': '--ch-blue', Blue: '--ch-blue', Green: '--ch-green', UV: '--ch-uv', Cyan: '--ch-cyan', Red: '--ch-red' };
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  var STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; // watts per gallon at peak
-  var opts = { gal: 15, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
+  var STEPS = [0.25, 0.40, 0.55, 0.70, 0.85, 1.0]; // share of the full-strength target at peak
+  var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
+  try { if (!JSON.parse(localStorage.getItem('k7-build') || '{}').target) opts.target = opts.gal; } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
   function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
-  function stepWatts(i) { return opts.gal * STEPS[i]; }
-  function built() {
-    return P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: stepWatts(opts.step), fixtureWatts: opts.fixture,
+  if (!(opts.step >= 0 && opts.step < STEPS.length)) opts.step = 0;
+  function stepWatts(i) { return opts.target * STEPS[i]; }
+  // The shape the steps scale: the builder's (null) or a loaded profile.
+  var shape = null;
+  try { var sh = JSON.parse(localStorage.getItem('k7-shape') || 'null'); if (sh) shape = { p: P.parse(sh.text), name: sh.name }; } catch (e) { shape = null; }
+  function saveShape() { try { localStorage.setItem('k7-shape', shape ? JSON.stringify({ text: P.serialize(shape.p), name: shape.name }) : 'null'); } catch (e) {} }
+  function stepProfile(i) {
+    if (shape) return P.scaleTo(shape.p, stepWatts(i), opts.fixture, opts.factor);
+    return P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: stepWatts(i), fixtureWatts: opts.fixture,
       factor: opts.factor, look: opts.look, warmEvening: opts.warm });
   }
+  function built() { return stepProfile(opts.step); }
 
   var state = { profile: built(), active: [] };
   try { var saved = localStorage.getItem('k7-profile'); if (saved) { state.profile = P.parse(saved); setStatus('Restored your last edit from this browser.', 'ok'); } } catch (e) {}
@@ -377,8 +432,46 @@ details[open] summary { margin-bottom: 10px; }
       out.push('<path d="' + sr.d + '" fill="none" stroke="' + sr.col + '" stroke-width="2.4" stroke-linejoin="round"' + dash + '/>');
       if (k === n - 1) sr.pts.slice(0, -1).forEach(function (q) { out.push('<circle cx="' + x(q[0]).toFixed(1) + '" cy="' + y(q[1]).toFixed(1) + '" r="2.6" fill="' + sr.col + '"/>'); });
     });
+    out.push('<g id="cursor"></g>');
     svg.innerHTML = out.join('');
+    drawCursor();
   }
+
+  // ---------- time cursor ----------
+  var cursorMin = null;
+  function peakMinute() { var pk = P.peak(state.profile, 1, 1); return pk.slot ? pk.slot.hour * 60 + pk.slot.minute : 12 * 60; }
+  function drawCursor() {
+    var p = state.profile, m = cursorMin == null ? peakMinute() : cursorMin;
+    var lv = P.levelsAt(p, m), cx = x(m), g = $('cursor'); if (!g) return;
+    var out = ['<line x1="' + cx.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--ink)" stroke-width="1.5" stroke-opacity=".55"/>'];
+    p.channels.forEach(function (name, c) {
+      if (state.active[c]) out.push('<circle cx="' + cx.toFixed(1) + '" cy="' + y(lv[c]).toFixed(1) + '" r="4.5" fill="var(--panel)" stroke="' + colorVar(name, c) + '" stroke-width="2.2"/>');
+    });
+    g.innerHTML = out.join('');
+    var watts = 0; lv.forEach(function (v) { watts += v / 100; }); watts = watts * opts.fixture * opts.factor / lv.length;
+    $('at').innerHTML = '<span class="t">' + pad(Math.floor(m / 60)) + ':' + pad(m % 60) + '</span>' +
+      p.channels.map(function (name, c) {
+        return '<span class="ch' + (state.active[c] ? '' : ' off') + '"><span class="dot" style="--c:' + colorVar(name, c) + '"></span>' + name + ' <b>' + fmtPct(lv[c]) + '</b></span>';
+      }).join('') + '<span class="w">≈ ' + fmtW(watts) + ' W</span>';
+    var svg = $('chart'); svg.setAttribute('aria-valuenow', m); svg.setAttribute('aria-valuetext', pad(Math.floor(m / 60)) + ':' + pad(m % 60));
+  }
+  function fmtPct(v) { return (v > 0 && v < 10 && Math.round(v) !== v ? v.toFixed(1) : String(Math.round(v))) + '%'; }
+  function minuteFromEvent(e) {
+    var r = $('chart').getBoundingClientRect(), vx = (e.clientX - r.left) / r.width * W;
+    var m = (vx - L) / (W - L - R) * 1440;
+    return Math.max(0, Math.min(1435, Math.round(m / 5) * 5));
+  }
+  (function () {
+    var svg = $('chart'), dragging = false;
+    svg.addEventListener('pointerdown', function (e) { dragging = true; try { svg.setPointerCapture(e.pointerId); } catch (er) {} cursorMin = minuteFromEvent(e); drawCursor(); });
+    svg.addEventListener('pointermove', function (e) { if (dragging || e.pointerType === 'mouse') { cursorMin = minuteFromEvent(e); drawCursor(); } });
+    ['pointerup', 'pointercancel'].forEach(function (t) { svg.addEventListener(t, function () { dragging = false; }); });
+    svg.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 60 : 15, m = cursorMin == null ? peakMinute() : cursorMin;
+      if (e.key === 'ArrowLeft') m = (m - step + 1440) % 1440; else if (e.key === 'ArrowRight') m = (m + step) % 1440; else return;
+      e.preventDefault(); cursorMin = m; drawCursor();
+    });
+  })();
 
   function drawLegend() {
     $('legend').innerHTML = state.profile.channels.map(function (name, c) {
@@ -469,12 +562,12 @@ details[open] summary { margin-bottom: 10px; }
     return txt;
   }
   function describe(p, title) {
-    var w = P.peak(p, opts.fixture, opts.factor).watts, target = opts.gal;
+    var w = P.peak(p, opts.fixture, opts.factor).watts, target = opts.target;
     return {
       title: title,
-      line1: '≈ ' + fmtW(w) + ' W peak · ' + (w / opts.gal).toFixed(2) + ' W/gal · ' + Math.round(w / target * 100) + '% of ' + fmtW(target) + ' W',
+      line1: '≈ ' + fmtW(w) + ' W peak · ' + Math.round(w / target * 100) + '% of a ' + fmtW(target) + ' W target',
       line2: schedule(p),
-      line3: opts.gal + ' gal tank · saved ' + today() + (opts.factor === 1 ? ' · watts estimated' : ' · watts matched to app')
+      line3: 'Saved ' + today() + (opts.factor === 1 ? ' · watts estimated' : ' · watts matched to app')
     };
   }
   function qrImage(p, info) {
@@ -565,29 +658,30 @@ details[open] summary { margin-bottom: 10px; }
   // ---------- recognizing builder profiles ----------
   function recognizeBuilt(p) {
     var r = P.recognize(p); if (!r) return null;
-    var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.gal * 100, nominal = null;
+    shape = null; saveShape();
+    var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.target * 100, nominal = null;
     // The builder lands at or just under its target, so look for the nearest target at or above.
-    STEPS.forEach(function (x) { var n = x * 100; if (nominal == null && pct <= n + 0.5 && pct >= n - 8) nominal = n; });
+    STEPS.forEach(function (x) { var n = Math.round(x * 100); if (nominal == null && pct <= n + 0.5 && pct >= n * 0.75) nominal = n; });
     opts.look = r.look; opts.on = r.on; opts.up = r.rampUp; opts.down = r.rampDown;
     opts.peak = r.off - r.on - r.rampUp - r.rampDown; opts.warm = r.warmEvening;
     var si = STEPS.findIndex(function (x) { return Math.round(x * 100) === nominal; });
     if (si >= 0) opts.step = si;
     saveOpts(); drawBuilder();
-    return { name: si >= 0 ? stepName(si) : opts.gal + ' gal · ' + Math.round(pct) + '% · ' + P.LOOKS[r.look].label };
+    return { name: si >= 0 ? stepName(si) : fmtW(w) + ' W · ' + P.LOOKS[r.look].label };
   }
 
   // ---------- builder ----------
-  function stepName(i) { return opts.gal + ' gal · Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + P.LOOKS[opts.look].label; }
+  function stepName(i) { return 'Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + fmtW(stepWatts(i)) + ' W · ' + (shape ? shape.name : P.LOOKS[opts.look].label); }
   function fileName(name) { return name.replace(/[^A-Za-z0-9%]+/g, '-').replace(/%/g, 'pct').replace(/^-|-$/g, '') + '.png'; }
   function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }
   function drawWatts() {
-    var pk = P.peak(state.profile, opts.fixture, opts.factor), w = pk.watts, per = w / opts.gal;
+    var pk = P.peak(state.profile, opts.fixture, opts.factor), w = pk.watts;
     var el = $('watts');
     if (!pk.slot) { el.textContent = 'Lights are off all day.'; return; }
     el.innerHTML = 'Peak <b>≈ ' + fmtW(w) + ' W</b> at ' + pad(pk.slot.hour) + ':' + pad(pk.slot.minute) +
-      ' · ' + per.toFixed(2) + ' W/gal for ' + opts.gal + ' gal' + (opts.factor === 1 ? ' (estimate)' : ' (matched to app)') +
+      ' · ' + Math.round(w / opts.target * 100) + '% of your ' + fmtW(opts.target) + ' W target' + (opts.factor === 1 ? ' (estimate)' : ' (matched to app)') +
       '<br><span class="note">' + schedule(state.profile) + '</span>' +
-      (per > 1.05 ? ' <span class="warn">Above 1 W/gal: strong for low-light corals.</span>' : '');
+      (w > opts.target * 1.03 ? ' <span class="warn">Stronger than your target.</span>' : '');
   }
   function hourOpts(sel, val) {
     var h = ''; for (var i = 0; i < 24; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + pad(i) + ':00</option>';
@@ -598,7 +692,8 @@ details[open] summary { margin-bottom: 10px; }
     sel.innerHTML = h;
   }
   function drawBuilder() {
-    $('gal').value = opts.gal; $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
+    $('target').value = opts.target; $('gal').value = opts.gal; $('lights').value = opts.lights; $('calc-w').textContent = fmtW(calcWatts());
+    $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
     hourOpts($('on'), opts.on);
     durOpts($('up'), 1, 6, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 1, 6, opts.down);
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
@@ -607,10 +702,13 @@ details[open] summary { margin-bottom: 10px; }
     $('steps').innerHTML = STEPS.map(function (r, i) {
       return '<button type="button" role="radio" data-step="' + i + '" aria-checked="' + (i === opts.step) + '"><b>' + (i + 1) + '</b><small>' + fmtW(stepWatts(i)) + ' W</small></button>';
     }).join('');
-    var off = offHour(), ok = off <= 24;
-    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + STEPS[opts.step].toFixed(1) + ' W/gal (' + fmtW(stepWatts(opts.step)) + ' W). ' +
-      (opts.step === 0 ? 'Start here.' : opts.step === 5 ? 'Full rule-of-thumb target.' : 'Move up only after two good weeks on the step below.');
+    var off = offHour(), ok = shape ? true : off <= 24;
+    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + Math.round(STEPS[opts.step] * 100) + '% of your target). ' +
+      (opts.step === 0 ? 'Start here when acclimating.' : opts.step === STEPS.length - 1 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after a week or two of happy corals on the step below.');
+    $('shape-bar').hidden = !shape; $('shape-inputs').hidden = !!shape; $('warm-row').hidden = !!shape;
+    if (shape) { $('shape-name').textContent = shape.name; $('shape-sum').textContent = schedule(shape.p); }
     var sum = $('build-sum');
+    if (shape) { sum.textContent = 'Each step scales the loaded shape to its wattage. Timing, colors and moonlight stay as they are.'; sum.className = 'note'; $('btn-build').disabled = $('btn-set').disabled = false; return; }
     sum.textContent = ok
       ? 'Total ' + (off - opts.on) + ' h of light, ' + pad(opts.on) + ':00–' + pad(off % 24) + ':00: ' + opts.up + ' h ramp up, ' +
         opts.peak + ' h at peak (' + pad(opts.on + opts.up) + ':00–' + pad(opts.on + opts.up + opts.peak) + ':00), ' + opts.down + ' h ramp down.'
@@ -623,7 +721,38 @@ details[open] summary { margin-bottom: 10px; }
     $('warm-note').textContent = opts.down < 2 ? '(needs a ramp down of 2 h or more)' : '';
   }
   function builderChange() { saveOpts(); drawBuilder(); }
-  $('gal').addEventListener('change', function () { var v = Math.round(+this.value); opts.gal = isFinite(v) && v > 0 ? Math.min(300, v) : 15; builderChange(); drawWatts(); });
+  $('btn-use-shape').addEventListener('click', function () {
+    var p = P.parse(P.serialize(state.profile));
+    if (!(P.peak(p, 1, 1).watts > 0)) { setStatus('This profile is dark all day, so it has no shape to scale.', 'err'); return; }
+    var nm = $('name').value.trim();
+    shape = { p: p, name: nm && nm !== 'Imported profile' && !/^Step \d/.test(nm) ? nm : 'Loaded shape' };
+    saveShape(); drawBuilder();
+    setStatus('Using "' + shape.name + '" as the shape. Pick a step or tap Make all 6 steps.', 'ok');
+    $('h-build').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  // The K7 Pro IV's built-in profiles, exported from the Noo-Psyche app, plus BeanAnimal's
+  // published S/L profile (beananimal.com K7 profile generator, shared on Reef2Reef).
+  var STOCK = {
+    BA: { name: 'BeanAnimal S/L', text: '006464646464#0000000100010100010000000001000002000000000000000300000000000000040000000000000005000000000000000600000000010000070001010001010108000202000104010900030600020A020A00080D000612030B000E15000C1A080C00171D0312220E0D001C25081A29110E001D2B0C212E120F0019300E263111100012310E28320E11000C300927310A1200072C04222F0513000525021929031400041B0110210215000311000817011600020900040E001700010400020500' },
+    LPS: { name: 'K7 stock LPS', text: '323232323232#0000000000000000010000000000000002000000000000000300000000000000040000000000000005000000000000000600000000000000070000000000000008000000000000000900000A00030A000A00011E14051E000B000550320A50000C000550320A50000D000550320A50000E000550320A50000F000550320A500010000550320A500011000550320A500012000550320A50001300011E14051E001400000A00030A00150000000000000016000000000000001700000000000000' },
+    SL: { name: 'K7 stock mixed (S/L)', text: '323232323232#00000000000000000100000000000000020000000000000003000000000000000400000000000000050000000000000006000000000000000700000000000000080000000000000009000514141414000A000A28282828050B001E5A5A465A140C001E5A5A465A140D001E5A5A465A140E001E5A5A465A140F001E5A5A465A1410001E5A5A465A1411001E5A5A465A1412001E5A5A465A1413000A28282828051400051414141400150000000000000016000000000000001700000000000000' },
+    SPS: { name: 'K7 stock SPS', text: '323232323232#00000000000000000100000000000000020000000000000003000000000000000400000000000000050000000000000006000000000000000700000000000000080000000000000009001E1E1E1E1E1E0A003232323232320B005F5F5F5F5F5F0C005F5F5F5F5F5F0D005F5F5F5F5F5F0E005F5F5F5F5F5F0F005F5F5F5F5F5F10005F5F5F5F5F5F11005F5F5F5F5F5F12005F5F5F5F5F5F130032323232323214001E1E1E1E1E1E150000000000000016000000000000001700000000000000' }
+  };
+  document.querySelectorAll('[data-stock]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var st = STOCK[b.getAttribute('data-stock')];
+      load(P.parse(st.text)); $('name').value = st.name; drawQR();
+      setStatus('Loaded "' + st.name + '". Tap Use as shape for the steps to scale it to your target.', 'ok');
+    });
+  });
+  $('btn-shape-off').addEventListener('click', function () { shape = null; saveShape(); drawBuilder(); setStatus('Back to the builder\'s own shape.', 'ok'); });
+  function setTarget(v) { v = Math.round(v * 2) / 2; opts.target = isFinite(v) && v >= 1 ? Math.min(400, v) : opts.target; builderChange(); drawWatts(); }
+  function calcWatts() { return Math.round(opts.gal / Math.max(1, opts.lights) * 2) / 2; }
+  $('target').addEventListener('change', function () { setTarget(+this.value); });
+  document.querySelectorAll('[data-nudge]').forEach(function (b) { b.addEventListener('click', function () { setTarget(opts.target + +b.getAttribute('data-nudge')); }); });
+  $('gal').addEventListener('change', function () { var v = Math.round(+this.value); opts.gal = isFinite(v) && v > 0 ? Math.min(1000, v) : 15; builderChange(); });
+  $('lights').addEventListener('change', function () { var v = Math.round(+this.value); opts.lights = isFinite(v) && v > 0 ? Math.min(12, v) : 1; builderChange(); });
+  $('btn-calc').addEventListener('click', function () { setTarget(calcWatts()); });
   $('on').addEventListener('change', function () { opts.on = +this.value; builderChange(); });
   $('up').addEventListener('change', function () { opts.up = +this.value; builderChange(); });
   $('peakh').addEventListener('change', function () { opts.peak = +this.value; builderChange(); });
@@ -636,7 +765,7 @@ details[open] summary { margin-bottom: 10px; }
     var nm = stepName(opts.step);
     $('name').value = nm; try { localStorage.setItem('k7-name', nm); } catch (e) {}
     drawQR();
-    setStatus('Built step ' + (opts.step + 1) + ' (' + P.LOOKS[opts.look].label + ') for a ' + opts.gal + '-gallon tank. Save the code below to Photos.', 'ok');
+    setStatus('Built ' + stepName(opts.step) + '. Save the code below to Photos.', 'ok');
   });
   $('fixture').addEventListener('change', function () { var v = +this.value; opts.fixture = v > 0 ? v : 100; builderChange(); drawWatts(); });
   $('btn-cal').addEventListener('click', function () {
@@ -651,8 +780,7 @@ details[open] summary { margin-bottom: 10px; }
   var setProfiles = [];
   $('btn-set').addEventListener('click', function () {
     setProfiles = STEPS.map(function (r, i) {
-      var p = P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: stepWatts(i), fixtureWatts: opts.fixture,
-        factor: opts.factor, look: opts.look, warmEvening: opts.warm });
+      var p = stepProfile(i);
       var name = stepName(i);
       return { p: p, name: name, img: qrImage(p, describe(p, name)), file: fileName(name) };
     });
@@ -662,7 +790,7 @@ details[open] summary { margin-bottom: 10px; }
         '<figcaption><span><b>Step ' + (i + 1) + '</b> ≈ ' + fmtW(w) + ' W</span><span class="acts"><button type="button" data-save="' + i + '">Save</button>' +
         '<button type="button" data-edit="' + i + '">Edit</button></span></figcaption></figure>';
     }).join('');
-    $('h-set').textContent = 'All steps for ' + opts.gal + ' gal';
+    $('h-set').textContent = 'All steps for a ' + fmtW(opts.target) + ' W target';
     $('set-panel').hidden = false;
     $('set-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -720,7 +848,7 @@ details[open] summary { margin-bottom: 10px; }
     if (typeof JSZip !== 'function') return Promise.reject(new Error('zip library did not load'));
     var z = new JSZip();
     files.forEach(function (f) { z.file(f.name, f.blob); });
-    return z.generateAsync({ type: 'blob' }).then(function (b) { return { name: 'K7-' + opts.gal + 'gal-steps.zip', blob: b }; });
+    return z.generateAsync({ type: 'blob' }).then(function (b) { return { name: 'K7-' + fmtW(opts.target) + 'W-steps.zip', blob: b }; });
   }
   $('btn-save-all').addEventListener('click', function () {
     if (!setProfiles.length) return;
