@@ -10,14 +10,14 @@
  *         HH is the hour index (00-17 hex), MM the minute the point sits at,
  *         each channel byte the intensity in percent (00-64 hex).
  *
- * The K7 Pro III uses six channels in the order White, Blue, Green, UV,
+ * The K7 Pro uses six channels in the order White, Royal Blue, Green, UV,
  * Cyan, Red, so its header is 12 characters and each slot 16. The channel
  * count is derived from the header so other models parse as well.
  */
 (function (root) {
   'use strict';
 
-  var PRO3_CHANNELS = ['White', 'Blue', 'Green', 'UV', 'Cyan', 'Red'];
+  var PRO3_CHANNELS = ['White', 'Royal Blue', 'Green', 'UV', 'Cyan', 'Red'];
 
   function hex2(n) {
     return Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0').toUpperCase();

@@ -57,7 +57,7 @@ WWBBGGUUCCRR#HHMMWWBBGGUUCCRR × 24
 - **Schedule** (after `#`): 24 slots, one per hour. Each slot is the hour index,
   the minute the point sits at, and then one hex byte per channel giving its
   intensity as a percentage.
-- **Channel order on the K7 Pro III**: White, Blue, Green, UV, Cyan, Red.
+- **Channel order on the K7 Pro**: White, Royal Blue, Green, UV, Cyan, Red.
 
 `profile.js` works out the channel count from the header's length, so a model
 with a different number of channels still parses. If a QR code doesn't match this

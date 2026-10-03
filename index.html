@@ -346,7 +346,7 @@ details[open] summary { margin-bottom: 10px; }
       <summary>How the code is laid out</summary>
       <pre class="fmt">WWBBGGUUCCRR#  then 24 ×  HHMM WW BB GG UU CC RR
 └ channel limits, hex %   └ hour, minute, channel %, all hex</pre>
-      <p class="note">Plain text, byte mode, error correction H. The channel order is White, Blue, Green, UV, Cyan, Red (as the K7 Pro III uses it). If a code has a different number of channels, the editor reads the count from the limits and labels them Channel 1, 2, and so on.</p>
+      <p class="note">Plain text, byte mode, error correction H. The channel order is White, Royal Blue, Green, UV, Cyan, Red, as on the K7 Pro. If a code has a different number of channels, the editor reads the count from the limits and labels them Channel 1, 2, and so on.</p>
     </details>
   </section>
 </div>
@@ -359,7 +359,7 @@ details[open] summary { margin-bottom: 10px; }
 (function () {
   'use strict';
   var P = window.NooProfile;
-  var COLOR = { White: '--ch-white', Blue: '--ch-blue', Green: '--ch-green', UV: '--ch-uv', Cyan: '--ch-cyan', Red: '--ch-red' };
+  var COLOR = { White: '--ch-white', 'Royal Blue': '--ch-blue', Blue: '--ch-blue', Green: '--ch-green', UV: '--ch-uv', Cyan: '--ch-cyan', Red: '--ch-red' };
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
