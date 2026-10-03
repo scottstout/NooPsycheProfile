@@ -112,33 +112,49 @@
   /*
    * Build a 24-point profile.
    *   on, off      whole hours; the light is at 0 at both and lit between them
-   *   ramp         hours to fade in and to fade out
+   *   rampUp       hours to fade in (from 0 at `on` to full), on an S-curve
+ *   rampDown     hours to fade out (from full to 0 at `off`)
    *   peakWatts    target draw during the peak
    *   warmEvening  blues/UV/cyan fade faster than white/red/green after the peak
    */
+  // S-curve: slow start, steady middle, gentle arrival at full strength.
+  function ease(t) { return (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, t)))) / 2; }
+
   function build(o) {
     var look = LOOKS[o.look] || LOOKS.balanced, mix = look.mix, n = mix.length;
     var fixture = o.fixtureWatts || 100, factor = o.factor || 1;
     var sumMix = mix.reduce(function (a, b) { return a + b; }, 0);
     var k = o.peakWatts * n * 100 / (fixture * factor * sumMix);
     k = Math.min(k, 100 / Math.max.apply(null, mix));
-    var ramp = Math.max(1, o.ramp || 2);
-    var p = blank();
-    p.slots.forEach(function (s) {
-      var h = s.hour, f = 0, evening = false;
-      if (h > o.on && h < o.off) {
-        if (h - o.on < ramp) f = (h - o.on) / ramp;
-        else if (o.off - h < ramp) { f = (o.off - h) / ramp; evening = true; }
-        else f = 1;
-      }
-      s.values = mix.map(function (m, c) {
-        var g = f;
-        if (evening && o.warmEvening && COOL[c]) g = f * f;
-        var v = Math.round(g * k * m);
-        return Math.max(0, Math.min(100, v));
+    var up = Math.max(1, o.rampUp || o.ramp || 2), down = Math.max(1, o.rampDown || o.ramp || 2);
+    var kMax = 100 / Math.max.apply(null, mix);
+    function make(k) {
+      var p = blank();
+      p.slots.forEach(function (s) {
+        var h = s.hour, f = 0, evening = false;
+        if (h > o.on && h < o.off) {
+          if (h - o.on < up) f = ease((h - o.on) / up);
+          else if (o.off - h < down) { f = ease((o.off - h) / down); evening = true; }
+          else f = 1;
+        }
+        s.values = mix.map(function (m, c) {
+          var g = f;
+          if (evening && o.warmEvening && COOL[c]) g = f * f;
+          return Math.max(0, Math.min(100, Math.round(g * k * m)));
+        });
       });
-    });
-    return p;
+      return p;
+    }
+    // Rounding to whole percent shifts the draw; nudge k up while staying at or under the target.
+    var best = make(k);
+    while (k > 0.5 && peak(best, fixture, factor).watts > o.peakWatts) { k *= 0.99; best = make(k); }
+    for (var i = 0; i < 40 && k < kMax; i++) {
+      k = Math.min(kMax, k * 1.01);
+      var next = make(k);
+      if (peak(next, fixture, factor).watts > o.peakWatts) break;
+      best = next;
+    }
+    return best;
   }
 
   var api = {

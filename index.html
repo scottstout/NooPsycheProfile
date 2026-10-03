@@ -115,6 +115,14 @@ textarea { min-height: 7.5em; resize: vertical; word-break: break-all; }
 details summary { cursor: pointer; font-weight: 600; }
 details[open] summary { margin-bottom: 10px; }
 .fmt { font: .82rem/1.6 var(--font-mono); overflow-x: auto; background: var(--bg); border-radius: 7px; padding: 10px 12px; margin: 0; }
+/* profile set */
+.set { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.card { margin: 0; display: grid; gap: 8px; align-content: start; }
+.card img { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: #fff; display: block; }
+.card figcaption { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card figcaption b { font: 700 1.05rem var(--font-display); }
+.card figcaption span { font: .82rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card button { padding: 5px 10px; font-size: .82rem; }
 /* builder */
 .build { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 .build .wide { grid-column: 1 / -1; max-width: 420px; }
@@ -164,8 +172,16 @@ details[open] summary { margin-bottom: 10px; }
         <select id="on"></select>
       </div>
       <div class="field">
-        <label class="label" for="off">Lights off</label>
-        <select id="off"></select>
+        <label class="label" for="up">Ramp up</label>
+        <select id="up"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="peakh">Peak</label>
+        <select id="peakh"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="down">Ramp down</label>
+        <select id="down"></select>
       </div>
       <div class="field wide">
         <span class="label">Color</span>
@@ -177,11 +193,12 @@ details[open] summary { margin-bottom: 10px; }
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
     </div>
-    <label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label>
+    <div class="row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
-      <span id="build-sum" class="note"></span>
+      <button id="btn-set" type="button">Make a set: 25 / 50 / 75 / 100%</button>
     </div>
+    <p id="build-sum" class="note"></p>
     <details>
       <summary>Ramping up safely</summary>
       <ul class="tips">
@@ -208,6 +225,14 @@ details[open] summary { margin-bottom: 10px; }
       </div>
       <p id="cal-status" class="status note"></p>
     </details>
+  </section>
+
+  <section class="panel" id="set-panel" aria-labelledby="h-set" hidden>
+    <div class="row between">
+      <h2 id="h-set">Profile set</h2>
+      <span class="note">Press and hold each code to save it to Photos. Start with the lowest.</span>
+    </div>
+    <div id="set" class="set"></div>
   </section>
 
   <section class="panel" aria-labelledby="h-load">
@@ -259,10 +284,10 @@ details[open] summary { margin-bottom: 10px; }
       <img id="qr" class="qr-out" alt="Profile QR code">
       <div style="display:grid;gap:14px;min-width:0">
         <div class="field">
-          <label class="label" for="name">Caption under the code</label>
-          <input id="name" type="text" value="K7_Pro_custom" maxlength="40" autocomplete="off">
+          <label class="label" for="name">Name printed on the image</label>
+          <input id="name" type="text" value="My K7 profile" maxlength="40" autocomplete="off">
         </div>
-        <p class="note">On iPhone, press and hold the code and choose <b>Save to Photos</b>, then import it from the Noo-Psyche app. On a computer, right-click it and save the image.</p>
+        <p class="note">The name, peak watts, and total and main light hours are printed above the code, so you can tell images apart in Photos. On iPhone, press and hold the code and choose <b>Save to Photos</b>, then import it from the Noo-Psyche app. On a computer, right-click it and save the image.</p>
         <div class="field">
           <div class="row between"><label class="label" for="raw">QR contents</label>
             <div class="row"><button id="btn-copy" type="button">Copy</button><button id="btn-apply" type="button">Apply edited text</button></div></div>
@@ -292,12 +317,13 @@ details[open] summary { margin-bottom: 10px; }
   var $ = function (id) { return document.getElementById(id); };
 
   var STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; // watts per gallon at peak
-  var opts = { gal: 15, on: 10, off: 20, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
+  var opts = { gal: 15, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
+  function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
   function stepWatts(i) { return opts.gal * STEPS[i]; }
   function built() {
-    return P.build({ on: opts.on, off: opts.off, ramp: 2, peakWatts: stepWatts(opts.step), fixtureWatts: opts.fixture,
+    return P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: stepWatts(opts.step), fixtureWatts: opts.fixture,
       factor: opts.factor, look: opts.look, warmEvening: opts.warm });
   }
 
@@ -412,18 +438,49 @@ details[open] summary { margin-bottom: 10px; }
   });
 
   // ---------- export ----------
-  function drawQR(text) {
-    var qr = qrcode(0, 'H'); qr.addData(text, 'Byte'); qr.make();
-    var count = qr.getModuleCount(), cell = 8, quiet = 4, size = (count + quiet * 2) * cell, cap = 44;
-    var cv = document.createElement('canvas'); cv.width = size; cv.height = size + cap;
+  function today() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function hm(h) { return pad(h % 24) + ':00'; }
+  function dur(h) { return h + ' h'; }
+  function schedule(p) {
+    var lit = p.slots.map(function (s) { return s.values.some(function (v) { return v > 0; }); });
+    var first = lit.indexOf(true), last = lit.lastIndexOf(true);
+    if (first < 0) return 'Lights off all day';
+    var on = first > 0 ? p.slots[first - 1].hour : p.slots[first].hour;
+    var off = last < p.slots.length - 1 ? p.slots[last + 1].hour : 24;
+    var top = P.peak(p, 1, 1).watts, hi = [];
+    p.slots.forEach(function (s, i) { if (P.slotWatts(p, s, 1, 1) >= top * 0.98) hi.push(i); });
+    var ms = p.slots[hi[0]].hour, me = p.slots[hi[hi.length - 1]].hour;
+    return 'Total ' + dur(off - on) + ' (' + hm(on) + '–' + hm(off) + ') · Main ' +
+      (me > ms ? dur(me - ms) + ' (' + hm(ms) + '–' + hm(me) + ')' : 'peak at ' + hm(ms));
+  }
+  function describe(p, title) {
+    var w = P.peak(p, opts.fixture, opts.factor).watts, target = opts.gal;
+    return {
+      title: title,
+      line1: '≈ ' + fmtW(w) + ' W peak · ' + (w / opts.gal).toFixed(2) + ' W/gal · ' + Math.round(w / target * 100) + '% of ' + fmtW(target) + ' W',
+      line2: schedule(p),
+      line3: opts.gal + ' gal tank · saved ' + today() + (opts.factor === 1 ? ' · watts estimated' : ' · watts matched to app')
+    };
+  }
+  function qrImage(p, info) {
+    var qr = qrcode(0, 'H'); qr.addData(P.serialize(p), 'Byte'); qr.make();
+    var count = qr.getModuleCount(), cell = 8, quiet = 4, size = (count + quiet * 2) * cell, head = 168, x0 = quiet * cell;
+    var cv = document.createElement('canvas'); cv.width = size; cv.height = size + head;
     var g = cv.getContext('2d');
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
+    g.fillStyle = '#0f2230'; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+    g.font = '700 36px "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif';
+    g.fillText(info.title || 'K7 profile', x0, 52, size - 2 * x0);
+    g.font = '500 23px "Barlow", Arial, sans-serif';
+    g.fillText(info.line1, x0, 88, size - 2 * x0);
+    g.fillText(info.line2, x0, 120, size - 2 * x0);
+    g.fillStyle = '#5a6f7d'; g.font = '19px "Barlow", Arial, sans-serif';
+    g.fillText(info.line3, x0, 152, size - 2 * x0);
     g.fillStyle = '#000000';
-    for (var r = 0; r < count; r++) for (var c = 0; c < count; c++) if (qr.isDark(r, c)) g.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
-    g.font = '24px "Barlow", Arial, sans-serif'; g.textAlign = 'center';
-    g.fillText($('name').value || '', size / 2, size + 20);
-    $('qr').src = cv.toDataURL('image/png');
+    for (var r = 0; r < count; r++) for (var c = 0; c < count; c++) if (qr.isDark(r, c)) g.fillRect(x0 + c * cell, head + (r + quiet) * cell, cell, cell);
+    return cv.toDataURL('image/png');
   }
+  function drawQR() { $('qr').src = qrImage(state.profile, describe(state.profile, $('name').value)); }
 
   function changed(full) {
     var text = P.serialize(state.profile);
@@ -431,14 +488,14 @@ details[open] summary { margin-bottom: 10px; }
     drawChart(); drawWatts();
     $('raw').value = text; $('raw-status').textContent = text.length + ' characters, ' + state.profile.channels.length + ' channels, ' + state.profile.slots.length + ' points.';
     $('raw-status').className = 'status note';
-    try { drawQR(text); } catch (e) { $('raw-status').textContent = 'Could not draw the QR code: ' + e.message; $('raw-status').className = 'status err'; }
+    try { drawQR(); } catch (e) { $('raw-status').textContent = 'Could not draw the QR code: ' + e.message; $('raw-status').className = 'status err'; }
     try { localStorage.setItem('k7-profile', text); } catch (e) {}
   }
   function load(profile) { state.profile = profile; resetActive(); drawLegend(); changed(true); }
 
   $('name').addEventListener('input', function () {
     try { localStorage.setItem('k7-name', $('name').value); } catch (e) {}
-    drawQR($('raw').value);
+    drawQR();
   });
   $('btn-blank').addEventListener('click', function () { load(P.blank(state.profile.channels)); setStatus('Started a blank profile with every channel off.', 'ok'); });
   $('btn-apply').addEventListener('click', function () {
@@ -474,7 +531,7 @@ details[open] summary { margin-bottom: 10px; }
       try {
         var p = P.parse(text); load(p);
         setStatus('Loaded ' + f.name + ': ' + p.channels.length + ' channels, ' + p.slots.length + ' points.', 'ok');
-        var base = f.name.replace(/\.[^.]+$/, ''); if (base) { $('name').value = base; drawQR($('raw').value); }
+        var base = f.name.replace(/\.[^.]+$/, ''); if (base) { $('name').value = base; drawQR(); }
       } catch (e) {
         $('raw').value = text;
         setStatus('The QR code was read, but it does not match the known layout: ' + e.message + ' Its raw contents are in the Export section.', 'err');
@@ -493,39 +550,54 @@ details[open] summary { margin-bottom: 10px; }
     if (!pk.slot) { el.textContent = 'Lights are off all day.'; return; }
     el.innerHTML = 'Peak <b>≈ ' + fmtW(w) + ' W</b> at ' + pad(pk.slot.hour) + ':' + pad(pk.slot.minute) +
       ' · ' + per.toFixed(2) + ' W/gal for ' + opts.gal + ' gal' + (opts.factor === 1 ? ' (estimate)' : ' (matched to app)') +
+      '<br><span class="note">' + schedule(state.profile) + '</span>' +
       (per > 1.05 ? ' <span class="warn">Above 1 W/gal: strong for low-light corals.</span>' : '');
   }
   function hourOpts(sel, val) {
     var h = ''; for (var i = 0; i < 24; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + pad(i) + ':00</option>';
     sel.innerHTML = h;
   }
+  function durOpts(sel, lo, hi, val) {
+    var h = ''; for (var i = lo; i <= hi; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + i + ' h</option>';
+    sel.innerHTML = h;
+  }
   function drawBuilder() {
     $('gal').value = opts.gal; $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
-    hourOpts($('on'), opts.on); hourOpts($('off'), opts.off);
+    hourOpts($('on'), opts.on);
+    durOpts($('up'), 1, 4, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 1, 4, opts.down);
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
       return '<button type="button" role="radio" data-look="' + k + '" aria-checked="' + (k === opts.look) + '">' + P.LOOKS[k].label + '</button>';
     }).join('');
     $('steps').innerHTML = STEPS.map(function (r, i) {
       return '<button type="button" role="radio" data-step="' + i + '" aria-checked="' + (i === opts.step) + '"><b>' + (i + 1) + '</b><small>' + fmtW(stepWatts(i)) + ' W</small></button>';
     }).join('');
-    var lit = opts.off - opts.on;
+    var off = offHour(), ok = off <= 24;
     $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + STEPS[opts.step].toFixed(1) + ' W/gal (' + fmtW(stepWatts(opts.step)) + ' W). ' +
       (opts.step === 0 ? 'Start here.' : opts.step === 5 ? 'Full rule-of-thumb target.' : 'Move up only after two good weeks on the step below.');
-    $('build-sum').textContent = lit >= 4 ? 'Light ' + lit + ' h: 2 h fade in, ' + (lit - 4) + ' h at peak, 2 h fade out.' : 'Lights-off must be at least 4 hours after lights-on.';
-    $('btn-build').disabled = lit < 4;
+    var sum = $('build-sum');
+    sum.textContent = ok
+      ? 'Total ' + (off - opts.on) + ' h of light, ' + pad(opts.on) + ':00–' + pad(off % 24) + ':00: ' + opts.up + ' h ramp up, ' +
+        opts.peak + ' h at peak (' + pad(opts.on + opts.up) + ':00–' + pad(opts.on + opts.up + opts.peak) + ':00), ' + opts.down + ' h ramp down.'
+      : 'That day runs past midnight (lights off at ' + pad(off % 24) + ':00 the next day). Start earlier or shorten the peak.';
+    sum.className = ok ? 'note' : 'status err';
+    $('btn-build').disabled = $('btn-set').disabled = !ok;
+    $('warm').disabled = opts.down < 2;
+    $('warm-note').textContent = opts.down < 2 ? '(needs a ramp down of 2 h or more)' : '';
   }
   function builderChange() { saveOpts(); drawBuilder(); }
   $('gal').addEventListener('change', function () { var v = Math.round(+this.value); opts.gal = isFinite(v) && v > 0 ? Math.min(300, v) : 15; builderChange(); drawWatts(); });
   $('on').addEventListener('change', function () { opts.on = +this.value; builderChange(); });
-  $('off').addEventListener('change', function () { opts.off = +this.value; builderChange(); });
+  $('up').addEventListener('change', function () { opts.up = +this.value; builderChange(); });
+  $('peakh').addEventListener('change', function () { opts.peak = +this.value; builderChange(); });
+  $('down').addEventListener('change', function () { opts.down = +this.value; builderChange(); });
   $('warm').addEventListener('change', function () { opts.warm = this.checked; builderChange(); });
   $('look').addEventListener('click', function (e) { var k = e.target.closest('[data-look]'); if (k) { opts.look = k.getAttribute('data-look'); builderChange(); } });
   $('steps').addEventListener('click', function (e) { var k = e.target.closest('[data-step]'); if (k) { opts.step = +k.getAttribute('data-step'); builderChange(); } });
   $('btn-build').addEventListener('click', function () {
     load(built());
-    var nm = 'K7_' + opts.gal + 'gal_step' + (opts.step + 1);
+    var nm = opts.gal + ' gal · ' + Math.round(STEPS[opts.step] * 100) + '% · ' + P.LOOKS[opts.look].label;
     $('name').value = nm; try { localStorage.setItem('k7-name', nm); } catch (e) {}
-    drawQR($('raw').value);
+    drawQR();
     setStatus('Built step ' + (opts.step + 1) + ' (' + P.LOOKS[opts.look].label + ') for a ' + opts.gal + '-gallon tank. Save the code below to Photos.', 'ok');
   });
   $('fixture').addEventListener('change', function () { var v = +this.value; opts.fixture = v > 0 ? v : 100; builderChange(); drawWatts(); });
@@ -537,6 +609,31 @@ details[open] summary { margin-bottom: 10px; }
     $('cal-status').className = 'status ok';
   });
   $('btn-cal-reset').addEventListener('click', function () { opts.factor = 1; saveOpts(); drawWatts(); $('cal-status').textContent = 'Back to the estimate from the fixture rating.'; $('cal-status').className = 'status note'; });
+
+  var SET = [0.25, 0.5, 0.75, 1];
+  var setProfiles = [];
+  $('btn-set').addEventListener('click', function () {
+    setProfiles = SET.map(function (f) {
+      var p = P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: opts.gal * f, fixtureWatts: opts.fixture,
+        factor: opts.factor, look: opts.look, warmEvening: opts.warm });
+      return { p: p, name: opts.gal + ' gal · ' + Math.round(f * 100) + '% · ' + P.LOOKS[opts.look].label };
+    });
+    $('set').innerHTML = setProfiles.map(function (it, i) {
+      var w = P.peak(it.p, opts.fixture, opts.factor).watts;
+      return '<figure class="card"><img alt="QR code for ' + it.name + '" src="' + qrImage(it.p, describe(it.p, it.name)) + '">' +
+        '<figcaption><span><b>' + Math.round(SET[i] * 100) + '%</b> ≈ ' + fmtW(w) + ' W</span><button type="button" data-edit="' + i + '">Edit this one</button></figcaption></figure>';
+    }).join('');
+    $('h-set').textContent = 'Profile set for ' + opts.gal + ' gal';
+    $('set-panel').hidden = false;
+    $('set-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  $('set').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-edit]'); if (!b) return;
+    var it = setProfiles[+b.getAttribute('data-edit')];
+    load(P.parse(P.serialize(it.p))); $('name').value = it.name; drawQR();
+    setStatus('Loaded "' + it.name + '" into the editor.', 'ok');
+    $('h-curve').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   drawBuilder(); fitChart();
   drawLegend(); changed(true);
