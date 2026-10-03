@@ -18,8 +18,8 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    above the target.
    Or tap **Make all 6 steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
-   **Or load** an exported QR image from Photos, such as a stock or shared
-   profile, and tap **Use as shape for the steps**: the six steps then scale that
+   **Or load** an exported QR image from Photos or one of the built-in
+   Noo-Psyche stock profiles (LPS, mixed, SPS), and tap **Use as shape for the steps**: the six steps then scale that
    profile's own curve (timing, colors, moonlight) to your target instead of the
    builder's.
 2. **Inspect and edit**: tap or drag on the curve to read every channel at that

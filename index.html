@@ -279,6 +279,12 @@ details[open] summary { margin-bottom: 10px; }
     </div>
     <p id="status" class="status">Showing step 1 of a 15 W target. Load a QR you exported to edit it instead.</p>
     <div class="row">
+      <span class="label">Noo-Psyche stock profiles</span>
+      <button type="button" data-stock="LPS">LPS</button>
+      <button type="button" data-stock="SL">Mixed (S/L)</button>
+      <button type="button" data-stock="SPS">SPS</button>
+    </div>
+    <div class="row">
       <button id="btn-use-shape" type="button">Use as shape for the steps</button>
       <span class="note">Keeps the loaded profile's timing, colors and moonlight; the steps scale it to your target. Name it under Export first to name the shape.</span>
     </div>
@@ -717,6 +723,19 @@ details[open] summary { margin-bottom: 10px; }
     saveShape(); drawBuilder();
     setStatus('Using "' + shape.name + '" as the shape. Pick a step or tap Make all 6 steps.', 'ok');
     $('h-build').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  // The K7 Pro IV's built-in profiles, exported from the Noo-Psyche app.
+  var STOCK = {
+    LPS: { name: 'K7 stock LPS', text: '323232323232#0000000000000000010000000000000002000000000000000300000000000000040000000000000005000000000000000600000000000000070000000000000008000000000000000900000A00030A000A00011E14051E000B000550320A50000C000550320A50000D000550320A50000E000550320A50000F000550320A500010000550320A500011000550320A500012000550320A50001300011E14051E001400000A00030A00150000000000000016000000000000001700000000000000' },
+    SL: { name: 'K7 stock mixed (S/L)', text: '323232323232#00000000000000000100000000000000020000000000000003000000000000000400000000000000050000000000000006000000000000000700000000000000080000000000000009000514141414000A000A28282828050B001E5A5A465A140C001E5A5A465A140D001E5A5A465A140E001E5A5A465A140F001E5A5A465A1410001E5A5A465A1411001E5A5A465A1412001E5A5A465A1413000A28282828051400051414141400150000000000000016000000000000001700000000000000' },
+    SPS: { name: 'K7 stock SPS', text: '323232323232#00000000000000000100000000000000020000000000000003000000000000000400000000000000050000000000000006000000000000000700000000000000080000000000000009001E1E1E1E1E1E0A003232323232320B005F5F5F5F5F5F0C005F5F5F5F5F5F0D005F5F5F5F5F5F0E005F5F5F5F5F5F0F005F5F5F5F5F5F10005F5F5F5F5F5F11005F5F5F5F5F5F12005F5F5F5F5F5F130032323232323214001E1E1E1E1E1E150000000000000016000000000000001700000000000000' }
+  };
+  document.querySelectorAll('[data-stock]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var st = STOCK[b.getAttribute('data-stock')];
+      load(P.parse(st.text)); $('name').value = st.name; drawQR();
+      setStatus('Loaded "' + st.name + '". Tap Use as shape for the steps to scale it to your target.', 'ok');
+    });
   });
   $('btn-shape-off').addEventListener('click', function () { shape = null; saveShape(); drawBuilder(); setStatus('Back to the builder\'s own shape.', 'ok'); });
   function setTarget(v) { v = Math.round(v * 2) / 2; opts.target = isFinite(v) && v >= 1 ? Math.min(400, v) : opts.target; builderChange(); drawWatts(); }
