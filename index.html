@@ -157,19 +157,34 @@ details[open] summary { margin-bottom: 10px; }
   <header>
     <span class="label">Noo-Psyche K7 Pro · profile QR</span>
     <h1>K7 Profile Editor</h1>
-    <p class="sub">Build a gentle schedule for your tank, or load a profile QR you exported to Photos. Then save the new QR to Photos and import it in the Noo-Psyche app.</p>
+    <p class="sub">Build a lighting schedule for your tank, or load a profile QR you exported to Photos. Then save the new QR to Photos and import it in the Noo-Psyche app.</p>
   </header>
 
   <section class="panel" aria-labelledby="h-build">
     <div class="row between">
-      <h2 id="h-build">Build a gentle profile</h2>
+      <h2 id="h-build">Build a profile</h2>
       <span class="note">Never goes above your target</span>
     </div>
-    <div class="build">
-      <div class="field wide">
-        <label class="label" for="target">Full-strength target</label>
-        <div class="unit"><button type="button" class="nudge" data-nudge="-1" aria-label="1 watt less">−</button><input id="target" type="number" min="1" max="400" step="0.5" value="15" inputmode="decimal"><button type="button" class="nudge" data-nudge="1" aria-label="1 watt more">+</button><span>W</span></div>
+    <div class="field">
+      <label class="label" for="target">Full-strength target</label>
+      <div class="unit"><button type="button" class="nudge" data-nudge="-1" aria-label="1 watt less">−</button><input id="target" type="number" min="1" max="400" step="0.5" value="15" inputmode="decimal"><button type="button" class="nudge" data-nudge="1" aria-label="1 watt more">+</button><span>W</span></div>
+    </div>
+    <details id="calc">
+      <summary>Work it out from tank size</summary>
+      <p class="note">A common rule of thumb is about 1 W of LED per gallon at full strength. With more than one light, each light gets its share.</p>
+      <div class="row">
+        <div class="field">
+          <label class="label" for="gal">Tank size</label>
+          <div class="unit"><input id="gal" type="number" min="1" max="1000" step="1" value="15" inputmode="numeric"><span>gal</span></div>
+        </div>
+        <div class="field">
+          <label class="label" for="lights">Lights on the tank</label>
+          <div class="unit"><input id="lights" type="number" min="1" max="12" step="1" value="1" inputmode="numeric"><span>lights</span></div>
+        </div>
+        <button id="btn-calc" type="button" style="align-self:end">Use <span id="calc-w">15</span> W</button>
       </div>
+    </details>
+    <div class="build">
       <div class="field">
         <label class="label" for="on">Lights on</label>
         <select id="on"></select>
@@ -193,39 +208,24 @@ details[open] summary { margin-bottom: 10px; }
     </div>
     <div class="field">
       <span class="label">Strength step</span>
+      <p class="note">Step 6 is your full target. Steps 1 to 5 run from 50% to 90% of it, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Corals already used to this light can go straight to step 6.</p>
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
+      <details>
+        <summary>Stepping up while corals acclimate</summary>
+        <ul class="tips">
+          <li>Start at step 1. Every two weeks, if the corals look healthy (zoanthids open fully, green star polyps spread out like grass), move up one step.</li>
+          <li>If corals stay closed, shrink, or lose color, go back one step and stay there for two weeks.</li>
+          <li>If you set the target with the 1 W per gallon rule of thumb, note that GSP and most zoanthids don't need more than that, and many do well below it.</li>
+        </ul>
+      </details>
     </div>
-    <details id="calc">
-      <summary>Work it out from tank size</summary>
-      <p class="note">A common rule of thumb is about 1 W of LED per gallon at full strength. With more than one light, each light gets its share.</p>
-      <div class="row">
-        <div class="field">
-          <label class="label" for="gal">Tank size</label>
-          <div class="unit"><input id="gal" type="number" min="1" max="1000" step="1" value="15" inputmode="numeric"><span>gal</span></div>
-        </div>
-        <div class="field">
-          <label class="label" for="lights">Lights on the tank</label>
-          <div class="unit"><input id="lights" type="number" min="1" max="12" step="1" value="1" inputmode="numeric"><span>lights</span></div>
-        </div>
-        <button id="btn-calc" type="button" style="align-self:end">Use <span id="calc-w">15</span> W</button>
-      </div>
-    </details>
     <div class="row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
       <button id="btn-set" type="button">Make all 6 steps</button>
     </div>
     <p id="build-sum" class="note"></p>
-    <details>
-      <summary>Ramping up safely</summary>
-      <ul class="tips">
-        <li>Start at step 1. Every two weeks, if the zoanthids open fully and the green star polyps spread out like grass, move up one step.</li>
-        <li>If zoanthids stay closed, shrink, or lose color, or the GSP stays pulled in, go back one step and stay there for two weeks.</li>
-        <li>Step 6 is your full target. Steps 1 to 5 are 50% to 90% of it. If you used the 1 W per gallon rule of thumb, note that GSP and most zoanthids don't need more than that, and many do well below it.</li>
-        <li>The light fades between the hourly points, so lights-on and lights-off are gentle ramps rather than switches.</li>
-      </ul>
-    </details>
     <details>
       <summary>Match the app's watt reading</summary>
       <p class="note">Watts here are estimated from the K7 Pro IV's 100 W rating. To make them exact, import a profile into the app, read the watts it shows at the brightest time, and enter it here. Estimates and new profiles then use that correction.</p>
@@ -627,7 +627,7 @@ details[open] summary { margin-bottom: 10px; }
     }).join('');
     var off = offHour(), ok = off <= 24;
     $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + Math.round(STEPS[opts.step] * 100) + '% of your target). ' +
-      (opts.step === 0 ? 'Start here.' : opts.step === 5 ? 'Your full target.' : 'Move up only after two good weeks on the step below.');
+      (opts.step === 0 ? 'Start here when acclimating.' : opts.step === 5 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after two good weeks on the step below.');
     var sum = $('build-sum');
     sum.textContent = ok
       ? 'Total ' + (off - opts.on) + ' h of light, ' + pad(opts.on) + ':00–' + pad(off % 24) + ':00: ' + opts.up + ' h ramp up, ' +

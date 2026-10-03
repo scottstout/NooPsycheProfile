@@ -8,13 +8,14 @@ the 24-hour schedule and channel limits, and makes a new QR code to import.
 Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It needs
 `profile.js` next to it and loads two small QR libraries from public CDNs.
 
-1. **Build** a gentle profile: enter a full-strength target in watts for this
+1. **Build** a profile: enter a full-strength target in watts for this
    light (or work it out from tank size and number of lights, at about 1 W per
    gallon), the lights-on time, ramp-up, peak and ramp-down hours (e.g.
    1 h / 6 h / 1 h; ramps of 3 h or more are smoothest, since the light holds
-   one point per hour), and a color look. Then pick a strength step: step 1 is
-   50% of the target and step 6 is 100%. The builder never goes above the target.
-   Move up one step every two weeks while the corals look happy.
+   one point per hour), and a color look. Then pick a strength step: step 6 is the full target, and
+   steps 1 to 5 (50% to 90%) are for acclimating a new tank or new corals; move up
+   one step every two weeks while the corals look happy. The builder never goes
+   above the target.
    Or tap **Make all 6 steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
    **Or load** an exported QR image from Photos.
