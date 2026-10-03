@@ -12,14 +12,15 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    light (or work it out from tank size and number of lights, at about 1 W per
    gallon), the lights-on time, ramp-up, peak and ramp-down hours (e.g.
    1 h / 6 h / 1 h; ramps of 3 h or more are smoothest, since the light holds
-   one point per hour), and a color look. Then pick a strength step: step 6 is the full target, and
-   steps 1 to 5 (50% to 90%) are for acclimating a new tank or new corals; move up
-   one step every two weeks while the corals look happy. The builder never goes
+   one point per hour), and a color look. Then pick one of 6 strength steps: step 6 is the full target, and
+   steps 1 to 5 (25%, 40%, 55%, 70%, 85%) are for acclimating a new tank or new
+   corals; start below where they look happiest and move up a step every
+   week or two while they stay happy. The builder never goes
    above the target.
    Or tap **Make all 6 steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
    **Or load** an exported QR image from Photos or one of the built-in
-   Noo-Psyche stock profiles (LPS, mixed, SPS) or BeanAnimal's S/L profile, and tap **Use as shape for the steps**: the six steps then scale that
+   Noo-Psyche stock profiles (LPS, mixed, SPS) or BeanAnimal's S/L profile, and tap **Use as shape for the steps**: the steps then scale that
    profile's own curve (timing, colors, moonlight) to your target instead of the
    builder's.
 2. **Inspect and edit**: tap or drag on the curve to read every channel at that

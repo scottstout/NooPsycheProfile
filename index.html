@@ -222,14 +222,14 @@ details[open] summary { margin-bottom: 10px; }
     </div>
     <div class="field">
       <span class="label">Strength step</span>
-      <p class="note">Step 6 is your full target. Steps 1 to 5 run from 50% to 90% of it, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Corals already used to this light can go straight to step 6.</p>
+      <p class="note">Step 6 is your full target. Steps 1 to 5 run from 25% to 85% of it, 15 points apart, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to step 6.</p>
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
       <details>
         <summary>Stepping up while corals acclimate</summary>
         <ul class="tips">
-          <li>Start at step 1. Every two weeks, if the corals look healthy (zoanthids open fully, green star polyps spread out like grass), move up one step.</li>
-          <li>If corals stay closed, shrink, or lose color, go back one step and stay there for two weeks.</li>
+          <li>Start at step 1, or at the highest step that's still below where your corals look happiest. Every week or two, if the corals look healthy (zoanthids open fully, green star polyps spread out like grass), move up one step.</li>
+          <li>If corals stay closed, shrink, or lose color, go back one step and stay there for a week or two.</li>
           <li>If you set the target with the 1 W per gallon rule of thumb, note that GSP and most zoanthids don't need more than that, and many do well below it.</li>
         </ul>
       </details>
@@ -368,12 +368,13 @@ details[open] summary { margin-bottom: 10px; }
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  var STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; // share of the full-strength target at peak
+  var STEPS = [0.25, 0.40, 0.55, 0.70, 0.85, 1.0]; // share of the full-strength target at peak
   var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
   try { if (!JSON.parse(localStorage.getItem('k7-build') || '{}').target) opts.target = opts.gal; } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
   function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
+  if (!(opts.step >= 0 && opts.step < STEPS.length)) opts.step = 0;
   function stepWatts(i) { return opts.target * STEPS[i]; }
   // The shape the steps scale: the builder's (null) or a loaded profile.
   var shape = null;
@@ -660,7 +661,7 @@ details[open] summary { margin-bottom: 10px; }
     shape = null; saveShape();
     var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.target * 100, nominal = null;
     // The builder lands at or just under its target, so look for the nearest target at or above.
-    STEPS.forEach(function (x) { var n = x * 100; if (nominal == null && pct <= n + 0.5 && pct >= n - 8) nominal = n; });
+    STEPS.forEach(function (x) { var n = Math.round(x * 100); if (nominal == null && pct <= n + 0.5 && pct >= n * 0.75) nominal = n; });
     opts.look = r.look; opts.on = r.on; opts.up = r.rampUp; opts.down = r.rampDown;
     opts.peak = r.off - r.on - r.rampUp - r.rampDown; opts.warm = r.warmEvening;
     var si = STEPS.findIndex(function (x) { return Math.round(x * 100) === nominal; });
@@ -703,7 +704,7 @@ details[open] summary { margin-bottom: 10px; }
     }).join('');
     var off = offHour(), ok = shape ? true : off <= 24;
     $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + Math.round(STEPS[opts.step] * 100) + '% of your target). ' +
-      (opts.step === 0 ? 'Start here when acclimating.' : opts.step === 5 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after two good weeks on the step below.');
+      (opts.step === 0 ? 'Start here when acclimating.' : opts.step === STEPS.length - 1 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after a week or two of happy corals on the step below.');
     $('shape-bar').hidden = !shape; $('shape-inputs').hidden = !!shape; $('warm-row').hidden = !!shape;
     if (shape) { $('shape-name').textContent = shape.name; $('shape-sum').textContent = schedule(shape.p); }
     var sum = $('build-sum');
