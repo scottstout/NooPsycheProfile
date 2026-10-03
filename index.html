@@ -123,6 +123,8 @@ details[open] summary { margin-bottom: 10px; }
 .card figcaption b { font: 700 1.05rem var(--font-display); }
 .card figcaption span { font: .82rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .card button { padding: 5px 10px; font-size: .82rem; }
+.card .acts { display: flex; gap: 6px; }
+.chip .pk { font: .78rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 /* builder */
 .build { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 .build .wide { grid-column: 1 / -1; max-width: 420px; }
@@ -196,7 +198,7 @@ details[open] summary { margin-bottom: 10px; }
     <div class="row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
-      <button id="btn-set" type="button">Make a set: 25 / 50 / 75 / 100%</button>
+      <button id="btn-set" type="button">Make all 6 steps</button>
     </div>
     <p id="build-sum" class="note"></p>
     <details>
@@ -229,9 +231,11 @@ details[open] summary { margin-bottom: 10px; }
 
   <section class="panel" id="set-panel" aria-labelledby="h-set" hidden>
     <div class="row between">
-      <h2 id="h-set">Profile set</h2>
-      <span class="note">Press and hold each code to save it to Photos. Start with the lowest.</span>
+      <h2 id="h-set">All steps</h2>
+      <div class="row"><button id="btn-save-all" class="primary" type="button">Save all</button></div>
     </div>
+    <p class="note" id="save-help">Save each code to Photos with its Save button, or press and hold it. Save all puts every image in one .zip; on iPhone that goes to the Files app, where you can unzip it, select the images and save them to Photos.</p>
+    <p id="save-status" class="status note" hidden></p>
     <div id="set" class="set"></div>
   </section>
 
@@ -290,7 +294,7 @@ details[open] summary { margin-bottom: 10px; }
         <p class="note">The name, peak watts, and total and main light hours are printed above the code, so you can tell images apart in Photos. On iPhone, press and hold the code and choose <b>Save to Photos</b>, then import it from the Noo-Psyche app. On a computer, right-click it and save the image.</p>
         <div class="field">
           <div class="row between"><label class="label" for="raw">QR contents</label>
-            <div class="row"><button id="btn-copy" type="button">Copy</button><button id="btn-apply" type="button">Apply edited text</button></div></div>
+            <div class="row"><button id="btn-save-one" type="button">Save image</button><button id="btn-copy" type="button">Copy</button><button id="btn-apply" type="button">Apply edited text</button></div></div>
           <textarea id="raw" spellcheck="false"></textarea>
           <p id="raw-status" class="status note"></p>
         </div>
@@ -307,6 +311,7 @@ details[open] summary { margin-bottom: 10px; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="profile.js"></script>
 <script>
 (function () {
@@ -355,15 +360,22 @@ details[open] summary { margin-bottom: 10px; }
       out.push('<line x1="' + x(h * 60) + '" x2="' + x(h * 60) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--grid)" stroke-width="1"/>');
       out.push('<text x="' + x(h * 60) + '" y="' + (H - 10) + '" text-anchor="' + (h === 24 ? 'end' : h === 0 ? 'start' : 'middle') + '">' + pad(h % 24) + ':00</text>');
     }
+    // Channels with identical curves share one path; draw them as interleaved dashes so each stays visible.
+    var series = [], groups = {};
     p.channels.forEach(function (name, c) {
       if (!state.active[c]) return;
       var pts = p.slots.map(function (s) { return [s.hour * 60 + s.minute, s.values[c] * p.limits[c] / 100]; });
       pts.sort(function (a, b) { return a[0] - b[0]; });
       if (pts.length) pts.push([1440, pts[0][1]]);
       var d = pts.map(function (q, i) { return (i ? 'L' : 'M') + x(q[0]).toFixed(1) + ' ' + y(q[1]).toFixed(1); }).join(' ');
-      var col = colorVar(name, c);
-      out.push('<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round"/>');
-      pts.slice(0, -1).forEach(function (q) { out.push('<circle cx="' + x(q[0]).toFixed(1) + '" cy="' + y(q[1]).toFixed(1) + '" r="2.6" fill="' + col + '"/>'); });
+      (groups[d] = groups[d] || []).push(series.length);
+      series.push({ d: d, pts: pts, col: colorVar(name, c) });
+    });
+    series.forEach(function (sr, i) {
+      var g = groups[sr.d], k = g.indexOf(i), n = g.length, dash = '';
+      if (n > 1) dash = ' stroke-dasharray="10 ' + (10 * (n - 1)) + '" stroke-dashoffset="' + (-10 * k) + '"';
+      out.push('<path d="' + sr.d + '" fill="none" stroke="' + sr.col + '" stroke-width="2.4" stroke-linejoin="round"' + dash + '/>');
+      if (k === n - 1) sr.pts.slice(0, -1).forEach(function (q) { out.push('<circle cx="' + x(q[0]).toFixed(1) + '" cy="' + y(q[1]).toFixed(1) + '" r="2.6" fill="' + sr.col + '"/>'); });
     });
     svg.innerHTML = out.join('');
   }
@@ -371,8 +383,15 @@ details[open] summary { margin-bottom: 10px; }
   function drawLegend() {
     $('legend').innerHTML = state.profile.channels.map(function (name, c) {
       return '<label class="chip"><input type="checkbox" data-ch="' + c + '"' + (state.active[c] ? ' checked' : '') +
-        '><span class="dot" style="--c:' + colorVar(name, c) + '"></span>' + name + '</label>';
+        '><span class="dot" style="--c:' + colorVar(name, c) + '"></span>' + name + ' <span class="pk" id="pk' + c + '"></span></label>';
     }).join('');
+  }
+  function drawPeaks() {
+    var p = state.profile;
+    p.channels.forEach(function (_, c) {
+      var m = 0; p.slots.forEach(function (s) { m = Math.max(m, s.values[c] * p.limits[c] / 100); });
+      var el = $('pk' + c); if (el) el.textContent = Math.round(m) + '%';
+    });
   }
   $('legend').addEventListener('change', function (e) {
     var c = e.target.getAttribute('data-ch'); if (c == null) return;
@@ -481,7 +500,7 @@ details[open] summary { margin-bottom: 10px; }
   function changed(full) {
     var text = P.serialize(state.profile);
     if (full) { drawLimits(); drawGrid(); }
-    drawChart(); drawWatts();
+    drawChart(); drawWatts(); drawPeaks();
     $('raw').value = text; $('raw-status').textContent = text.length + ' characters, ' + state.profile.channels.length + ' channels, ' + state.profile.slots.length + ' points.';
     $('raw-status').className = 'status note';
     try { drawQR(); } catch (e) { $('raw-status').textContent = 'Could not draw the QR code: ' + e.message; $('raw-status').className = 'status err'; }
@@ -544,21 +563,22 @@ details[open] summary { margin-bottom: 10px; }
   });
 
   // ---------- recognizing builder profiles ----------
-  var NOMINAL = [25, 50, 60, 70, 75, 80, 90, 100];
   function recognizeBuilt(p) {
     var r = P.recognize(p); if (!r) return null;
     var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.gal * 100, nominal = null;
     // The builder lands at or just under its target, so look for the nearest target at or above.
-    NOMINAL.forEach(function (n) { if (nominal == null && pct <= n + 0.5 && pct >= n * 0.85) nominal = n; });
+    STEPS.forEach(function (x) { var n = x * 100; if (nominal == null && pct <= n + 0.5 && pct >= n - 8) nominal = n; });
     opts.look = r.look; opts.on = r.on; opts.up = r.rampUp; opts.down = r.rampDown;
     opts.peak = r.off - r.on - r.rampUp - r.rampDown; opts.warm = r.warmEvening;
     var si = STEPS.findIndex(function (x) { return Math.round(x * 100) === nominal; });
     if (si >= 0) opts.step = si;
     saveOpts(); drawBuilder();
-    return { name: opts.gal + ' gal · ' + (nominal != null ? nominal : Math.round(pct)) + '% · ' + P.LOOKS[r.look].label };
+    return { name: si >= 0 ? stepName(si) : opts.gal + ' gal · ' + Math.round(pct) + '% · ' + P.LOOKS[r.look].label };
   }
 
   // ---------- builder ----------
+  function stepName(i) { return opts.gal + ' gal · Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + P.LOOKS[opts.look].label; }
+  function fileName(name) { return name.replace(/[^A-Za-z0-9%]+/g, '-').replace(/%/g, 'pct').replace(/^-|-$/g, '') + '.png'; }
   function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }
   function drawWatts() {
     var pk = P.peak(state.profile, opts.fixture, opts.factor), w = pk.watts, per = w / opts.gal;
@@ -580,7 +600,7 @@ details[open] summary { margin-bottom: 10px; }
   function drawBuilder() {
     $('gal').value = opts.gal; $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
     hourOpts($('on'), opts.on);
-    durOpts($('up'), 1, 4, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 1, 4, opts.down);
+    durOpts($('up'), 1, 6, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 1, 6, opts.down);
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
       return '<button type="button" role="radio" data-look="' + k + '" aria-checked="' + (k === opts.look) + '">' + P.LOOKS[k].label + '</button>';
     }).join('');
@@ -595,6 +615,8 @@ details[open] summary { margin-bottom: 10px; }
       ? 'Total ' + (off - opts.on) + ' h of light, ' + pad(opts.on) + ':00–' + pad(off % 24) + ':00: ' + opts.up + ' h ramp up, ' +
         opts.peak + ' h at peak (' + pad(opts.on + opts.up) + ':00–' + pad(opts.on + opts.up + opts.peak) + ':00), ' + opts.down + ' h ramp down.'
       : 'That day runs past midnight (lights off at ' + pad(off % 24) + ':00 the next day). Start earlier or shorten the peak.';
+    if (ok && Math.min(opts.up, opts.down) < 3) sum.textContent += ' The light holds one point per hour, so a ' + Math.min(opts.up, opts.down) +
+      ' h ramp has ' + (Math.min(opts.up, opts.down) === 1 ? 'no in-between points and is a straight fade' : 'one in-between point') + '. Ramps of 3 h or more follow a smooth S-curve.';
     sum.className = ok ? 'note' : 'status err';
     $('btn-build').disabled = $('btn-set').disabled = !ok;
     $('warm').disabled = opts.down < 2;
@@ -611,7 +633,7 @@ details[open] summary { margin-bottom: 10px; }
   $('steps').addEventListener('click', function (e) { var k = e.target.closest('[data-step]'); if (k) { opts.step = +k.getAttribute('data-step'); builderChange(); } });
   $('btn-build').addEventListener('click', function () {
     load(built());
-    var nm = opts.gal + ' gal · ' + Math.round(STEPS[opts.step] * 100) + '% · ' + P.LOOKS[opts.look].label;
+    var nm = stepName(opts.step);
     $('name').value = nm; try { localStorage.setItem('k7-name', nm); } catch (e) {}
     drawQR();
     setStatus('Built step ' + (opts.step + 1) + ' (' + P.LOOKS[opts.look].label + ') for a ' + opts.gal + '-gallon tank. Save the code below to Photos.', 'ok');
@@ -626,29 +648,73 @@ details[open] summary { margin-bottom: 10px; }
   });
   $('btn-cal-reset').addEventListener('click', function () { opts.factor = 1; saveOpts(); drawWatts(); $('cal-status').textContent = 'Back to the estimate from the fixture rating.'; $('cal-status').className = 'status note'; });
 
-  var SET = [0.25, 0.5, 0.75, 1];
   var setProfiles = [];
   $('btn-set').addEventListener('click', function () {
-    setProfiles = SET.map(function (f) {
-      var p = P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: opts.gal * f, fixtureWatts: opts.fixture,
+    setProfiles = STEPS.map(function (r, i) {
+      var p = P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: stepWatts(i), fixtureWatts: opts.fixture,
         factor: opts.factor, look: opts.look, warmEvening: opts.warm });
-      return { p: p, name: opts.gal + ' gal · ' + Math.round(f * 100) + '% · ' + P.LOOKS[opts.look].label };
+      var name = stepName(i);
+      return { p: p, name: name, img: qrImage(p, describe(p, name)), file: fileName(name) };
     });
     $('set').innerHTML = setProfiles.map(function (it, i) {
       var w = P.peak(it.p, opts.fixture, opts.factor).watts;
-      return '<figure class="card"><img alt="QR code for ' + it.name + '" src="' + qrImage(it.p, describe(it.p, it.name)) + '">' +
-        '<figcaption><span><b>' + Math.round(SET[i] * 100) + '%</b> ≈ ' + fmtW(w) + ' W</span><button type="button" data-edit="' + i + '">Edit this one</button></figcaption></figure>';
+      return '<figure class="card"><img alt="QR code for ' + it.name + '" src="' + it.img + '">' +
+        '<figcaption><span><b>Step ' + (i + 1) + '</b> ≈ ' + fmtW(w) + ' W</span><span class="acts"><button type="button" data-save="' + i + '">Save</button>' +
+        '<button type="button" data-edit="' + i + '">Edit</button></span></figcaption></figure>';
     }).join('');
-    $('h-set').textContent = 'Profile set for ' + opts.gal + ' gal';
+    $('h-set').textContent = 'All steps for ' + opts.gal + ' gal';
     $('set-panel').hidden = false;
     $('set-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   $('set').addEventListener('click', function (e) {
+    var sv = e.target.closest('[data-save]');
+    if (sv) { var one = setProfiles[+sv.getAttribute('data-save')]; saveFiles([{ name: one.file, blob: dataUrlBlob(one.img) }]); return; }
     var b = e.target.closest('[data-edit]'); if (!b) return;
     var it = setProfiles[+b.getAttribute('data-edit')];
     load(P.parse(P.serialize(it.p))); $('name').value = it.name; drawQR();
     setStatus('Loaded "' + it.name + '" into the editor.', 'ok');
     $('h-curve').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // ---------- saving ----------
+  function dataUrlBlob(url) {
+    var bin = atob(url.split(',')[1]), buf = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return new Blob([buf], { type: 'image/png' });
+  }
+  function saveNote(msg, kind) { var el = $('set-panel').hidden ? $('raw-status') : $('save-status'); el.hidden = false; el.textContent = msg; el.className = 'status ' + (kind || 'note'); }
+  var dlPromise = window.claude && window.claude.use ? window.claude.use('downloads').catch(function () { return null; }) : Promise.resolve(null);
+  // files: [{name, blob}]. One file saves as-is; several go into one .zip unless the browser can share them all at once.
+  function saveFiles(files) {
+    return dlPromise.then(function (dl) {
+      if (!dl && files.length > 1 && navigator.canShare && typeof File === 'function') {
+        var fs = files.map(function (f) { return new File([f.blob], f.name, { type: 'image/png' }); });
+        if (navigator.canShare({ files: fs })) return navigator.share({ files: fs }).then(function () { saveNote('Shared ' + fs.length + ' images.', 'ok'); }, function () {});
+      }
+      var job = files.length === 1 ? Promise.resolve({ name: files[0].name, blob: files[0].blob }) : zip(files);
+      return job.then(function (f) {
+        if (dl) return dl.save({ filename: f.name, data: f.blob }).then(function () { saveNote('Saved ' + f.name + '.', 'ok'); }, function (e) {
+          if (e && e.code === 'declined') return;
+          saveNote('Could not save: ' + ((e && e.message) || 'saving is not available here') + '. Press and hold each code instead.', 'err');
+        });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(f.blob); a.download = f.name;
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      });
+    });
+  }
+  function zip(files) {
+    if (typeof JSZip !== 'function') return Promise.reject(new Error('zip library did not load'));
+    var z = new JSZip();
+    files.forEach(function (f) { z.file(f.name, f.blob); });
+    return z.generateAsync({ type: 'blob' }).then(function (b) { return { name: 'K7-' + opts.gal + 'gal-steps.zip', blob: b }; });
+  }
+  $('btn-save-all').addEventListener('click', function () {
+    if (!setProfiles.length) return;
+    saveFiles(setProfiles.map(function (it) { return { name: it.file, blob: dataUrlBlob(it.img) }; }))
+      .catch(function (e) { saveNote('Could not make the .zip: ' + e.message + '. Save each code on its own instead.', 'err'); });
+  });
+  $('btn-save-one').addEventListener('click', function () {
+    saveFiles([{ name: fileName($('name').value || 'K7 profile'), blob: dataUrlBlob($('qr').src) }]).catch(function () {});
   });
 
   drawBuilder(); fitChart();

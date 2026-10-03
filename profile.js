@@ -179,7 +179,7 @@
     for (var ex = 0; ex <= 4; ex++) for (var eOn = 0; eOn <= Math.min(2, ex); eOn++) {
       var on = first - 1 - eOn, off = last + 1 + (ex - eOn);
       if (on < 0 || off > 24 || ex - eOn > 2) continue;
-      for (var up = 1; up <= 4; up++) for (var down = 1; down <= 4; down++) {
+      for (var up = 1; up <= 6; up++) for (var down = 1; down <= 6; down++) {
         if (off - on - up - down < 1) continue;
         for (var li = 0; li < looks.length; li++) for (var w = 1; w >= 0; w--) {
           var o = { look: looks[li], on: on, off: off, rampUp: up, rampDown: down, warmEvening: !!w };
