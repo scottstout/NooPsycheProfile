@@ -130,6 +130,7 @@ details[open] summary { margin-bottom: 10px; }
 .build .wide { grid-column: 1 / -1; max-width: 420px; }
 .unit { display: flex; align-items: center; gap: 6px; }
 .unit span { color: var(--muted); font-size: .9rem; }
+.nudge { padding: 6px 12px; font-size: 1rem; line-height: 1; }
 .build input[type=number], .panel input[type=number], select {
   font: 500 .95rem var(--font-body); color: var(--ink); background: var(--bg);
   border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; width: 100%; min-width: 0;
@@ -162,12 +163,12 @@ details[open] summary { margin-bottom: 10px; }
   <section class="panel" aria-labelledby="h-build">
     <div class="row between">
       <h2 id="h-build">Build a gentle profile</h2>
-      <span class="note">Peak capped at 1 W per gallon</span>
+      <span class="note">Never goes above your target</span>
     </div>
     <div class="build">
-      <div class="field">
-        <label class="label" for="gal">Tank size</label>
-        <div class="unit"><input id="gal" type="number" min="1" max="300" step="1" value="15" inputmode="numeric"><span>gal</span></div>
+      <div class="field wide">
+        <label class="label" for="target">Full-strength target</label>
+        <div class="unit"><button type="button" class="nudge" data-nudge="-1" aria-label="1 watt less">−</button><input id="target" type="number" min="1" max="400" step="0.5" value="15" inputmode="decimal"><button type="button" class="nudge" data-nudge="1" aria-label="1 watt more">+</button><span>W</span></div>
       </div>
       <div class="field">
         <label class="label" for="on">Lights on</label>
@@ -195,6 +196,21 @@ details[open] summary { margin-bottom: 10px; }
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
     </div>
+    <details id="calc">
+      <summary>Work it out from tank size</summary>
+      <p class="note">A common rule of thumb is about 1 W of LED per gallon at full strength. With more than one light, each light gets its share.</p>
+      <div class="row">
+        <div class="field">
+          <label class="label" for="gal">Tank size</label>
+          <div class="unit"><input id="gal" type="number" min="1" max="1000" step="1" value="15" inputmode="numeric"><span>gal</span></div>
+        </div>
+        <div class="field">
+          <label class="label" for="lights">Lights on the tank</label>
+          <div class="unit"><input id="lights" type="number" min="1" max="12" step="1" value="1" inputmode="numeric"><span>lights</span></div>
+        </div>
+        <button id="btn-calc" type="button" style="align-self:end">Use <span id="calc-w">15</span> W</button>
+      </div>
+    </details>
     <div class="row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
@@ -206,7 +222,7 @@ details[open] summary { margin-bottom: 10px; }
       <ul class="tips">
         <li>Start at step 1. Every two weeks, if the zoanthids open fully and the green star polyps spread out like grass, move up one step.</li>
         <li>If zoanthids stay closed, shrink, or lose color, or the GSP stays pulled in, go back one step and stay there for two weeks.</li>
-        <li>Step 6 is the 1 W per gallon rule of thumb. GSP and most zoanthids don't need more than that, and many do well below it.</li>
+        <li>Step 6 is your full target. Steps 1 to 5 are 50% to 90% of it. If you used the 1 W per gallon rule of thumb, note that GSP and most zoanthids don't need more than that, and many do well below it.</li>
         <li>The light fades between the hourly points, so lights-on and lights-off are gentle ramps rather than switches.</li>
       </ul>
     </details>
@@ -247,7 +263,7 @@ details[open] summary { margin-bottom: 10px; }
         <button id="btn-blank" type="button">Start blank</button>
       </div>
     </div>
-    <p id="status" class="status">Showing step 1 for a 15-gallon tank. Load a QR you exported to edit it instead.</p>
+    <p id="status" class="status">Showing step 1 of a 15 W target. Load a QR you exported to edit it instead.</p>
   </section>
 
   <section class="panel" aria-labelledby="h-curve">
@@ -321,12 +337,13 @@ details[open] summary { margin-bottom: 10px; }
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  var STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; // watts per gallon at peak
-  var opts = { gal: 15, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
+  var STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; // share of the full-strength target at peak
+  var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
+  try { if (!JSON.parse(localStorage.getItem('k7-build') || '{}').target) opts.target = opts.gal; } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
   function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
-  function stepWatts(i) { return opts.gal * STEPS[i]; }
+  function stepWatts(i) { return opts.target * STEPS[i]; }
   function built() {
     return P.build({ on: opts.on, off: offHour(), rampUp: opts.up, rampDown: opts.down, peakWatts: stepWatts(opts.step), fixtureWatts: opts.fixture,
       factor: opts.factor, look: opts.look, warmEvening: opts.warm });
@@ -469,12 +486,12 @@ details[open] summary { margin-bottom: 10px; }
     return txt;
   }
   function describe(p, title) {
-    var w = P.peak(p, opts.fixture, opts.factor).watts, target = opts.gal;
+    var w = P.peak(p, opts.fixture, opts.factor).watts, target = opts.target;
     return {
       title: title,
-      line1: '≈ ' + fmtW(w) + ' W peak · ' + (w / opts.gal).toFixed(2) + ' W/gal · ' + Math.round(w / target * 100) + '% of ' + fmtW(target) + ' W',
+      line1: '≈ ' + fmtW(w) + ' W peak · ' + Math.round(w / target * 100) + '% of a ' + fmtW(target) + ' W target',
       line2: schedule(p),
-      line3: opts.gal + ' gal tank · saved ' + today() + (opts.factor === 1 ? ' · watts estimated' : ' · watts matched to app')
+      line3: 'Saved ' + today() + (opts.factor === 1 ? ' · watts estimated' : ' · watts matched to app')
     };
   }
   function qrImage(p, info) {
@@ -565,7 +582,7 @@ details[open] summary { margin-bottom: 10px; }
   // ---------- recognizing builder profiles ----------
   function recognizeBuilt(p) {
     var r = P.recognize(p); if (!r) return null;
-    var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.gal * 100, nominal = null;
+    var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.target * 100, nominal = null;
     // The builder lands at or just under its target, so look for the nearest target at or above.
     STEPS.forEach(function (x) { var n = x * 100; if (nominal == null && pct <= n + 0.5 && pct >= n - 8) nominal = n; });
     opts.look = r.look; opts.on = r.on; opts.up = r.rampUp; opts.down = r.rampDown;
@@ -573,21 +590,21 @@ details[open] summary { margin-bottom: 10px; }
     var si = STEPS.findIndex(function (x) { return Math.round(x * 100) === nominal; });
     if (si >= 0) opts.step = si;
     saveOpts(); drawBuilder();
-    return { name: si >= 0 ? stepName(si) : opts.gal + ' gal · ' + Math.round(pct) + '% · ' + P.LOOKS[r.look].label };
+    return { name: si >= 0 ? stepName(si) : fmtW(w) + ' W · ' + P.LOOKS[r.look].label };
   }
 
   // ---------- builder ----------
-  function stepName(i) { return opts.gal + ' gal · Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + P.LOOKS[opts.look].label; }
+  function stepName(i) { return 'Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + fmtW(stepWatts(i)) + ' W · ' + P.LOOKS[opts.look].label; }
   function fileName(name) { return name.replace(/[^A-Za-z0-9%]+/g, '-').replace(/%/g, 'pct').replace(/^-|-$/g, '') + '.png'; }
   function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }
   function drawWatts() {
-    var pk = P.peak(state.profile, opts.fixture, opts.factor), w = pk.watts, per = w / opts.gal;
+    var pk = P.peak(state.profile, opts.fixture, opts.factor), w = pk.watts;
     var el = $('watts');
     if (!pk.slot) { el.textContent = 'Lights are off all day.'; return; }
     el.innerHTML = 'Peak <b>≈ ' + fmtW(w) + ' W</b> at ' + pad(pk.slot.hour) + ':' + pad(pk.slot.minute) +
-      ' · ' + per.toFixed(2) + ' W/gal for ' + opts.gal + ' gal' + (opts.factor === 1 ? ' (estimate)' : ' (matched to app)') +
+      ' · ' + Math.round(w / opts.target * 100) + '% of your ' + fmtW(opts.target) + ' W target' + (opts.factor === 1 ? ' (estimate)' : ' (matched to app)') +
       '<br><span class="note">' + schedule(state.profile) + '</span>' +
-      (per > 1.05 ? ' <span class="warn">Above 1 W/gal: strong for low-light corals.</span>' : '');
+      (w > opts.target * 1.03 ? ' <span class="warn">Stronger than your target.</span>' : '');
   }
   function hourOpts(sel, val) {
     var h = ''; for (var i = 0; i < 24; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + pad(i) + ':00</option>';
@@ -598,7 +615,8 @@ details[open] summary { margin-bottom: 10px; }
     sel.innerHTML = h;
   }
   function drawBuilder() {
-    $('gal').value = opts.gal; $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
+    $('target').value = opts.target; $('gal').value = opts.gal; $('lights').value = opts.lights; $('calc-w').textContent = fmtW(calcWatts());
+    $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
     hourOpts($('on'), opts.on);
     durOpts($('up'), 1, 6, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 1, 6, opts.down);
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
@@ -608,8 +626,8 @@ details[open] summary { margin-bottom: 10px; }
       return '<button type="button" role="radio" data-step="' + i + '" aria-checked="' + (i === opts.step) + '"><b>' + (i + 1) + '</b><small>' + fmtW(stepWatts(i)) + ' W</small></button>';
     }).join('');
     var off = offHour(), ok = off <= 24;
-    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + STEPS[opts.step].toFixed(1) + ' W/gal (' + fmtW(stepWatts(opts.step)) + ' W). ' +
-      (opts.step === 0 ? 'Start here.' : opts.step === 5 ? 'Full rule-of-thumb target.' : 'Move up only after two good weeks on the step below.');
+    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + Math.round(STEPS[opts.step] * 100) + '% of your target). ' +
+      (opts.step === 0 ? 'Start here.' : opts.step === 5 ? 'Your full target.' : 'Move up only after two good weeks on the step below.');
     var sum = $('build-sum');
     sum.textContent = ok
       ? 'Total ' + (off - opts.on) + ' h of light, ' + pad(opts.on) + ':00–' + pad(off % 24) + ':00: ' + opts.up + ' h ramp up, ' +
@@ -623,7 +641,13 @@ details[open] summary { margin-bottom: 10px; }
     $('warm-note').textContent = opts.down < 2 ? '(needs a ramp down of 2 h or more)' : '';
   }
   function builderChange() { saveOpts(); drawBuilder(); }
-  $('gal').addEventListener('change', function () { var v = Math.round(+this.value); opts.gal = isFinite(v) && v > 0 ? Math.min(300, v) : 15; builderChange(); drawWatts(); });
+  function setTarget(v) { v = Math.round(v * 2) / 2; opts.target = isFinite(v) && v >= 1 ? Math.min(400, v) : opts.target; builderChange(); drawWatts(); }
+  function calcWatts() { return Math.round(opts.gal / Math.max(1, opts.lights) * 2) / 2; }
+  $('target').addEventListener('change', function () { setTarget(+this.value); });
+  document.querySelectorAll('[data-nudge]').forEach(function (b) { b.addEventListener('click', function () { setTarget(opts.target + +b.getAttribute('data-nudge')); }); });
+  $('gal').addEventListener('change', function () { var v = Math.round(+this.value); opts.gal = isFinite(v) && v > 0 ? Math.min(1000, v) : 15; builderChange(); });
+  $('lights').addEventListener('change', function () { var v = Math.round(+this.value); opts.lights = isFinite(v) && v > 0 ? Math.min(12, v) : 1; builderChange(); });
+  $('btn-calc').addEventListener('click', function () { setTarget(calcWatts()); });
   $('on').addEventListener('change', function () { opts.on = +this.value; builderChange(); });
   $('up').addEventListener('change', function () { opts.up = +this.value; builderChange(); });
   $('peakh').addEventListener('change', function () { opts.peak = +this.value; builderChange(); });
@@ -636,7 +660,7 @@ details[open] summary { margin-bottom: 10px; }
     var nm = stepName(opts.step);
     $('name').value = nm; try { localStorage.setItem('k7-name', nm); } catch (e) {}
     drawQR();
-    setStatus('Built step ' + (opts.step + 1) + ' (' + P.LOOKS[opts.look].label + ') for a ' + opts.gal + '-gallon tank. Save the code below to Photos.', 'ok');
+    setStatus('Built ' + stepName(opts.step) + '. Save the code below to Photos.', 'ok');
   });
   $('fixture').addEventListener('change', function () { var v = +this.value; opts.fixture = v > 0 ? v : 100; builderChange(); drawWatts(); });
   $('btn-cal').addEventListener('click', function () {
@@ -662,7 +686,7 @@ details[open] summary { margin-bottom: 10px; }
         '<figcaption><span><b>Step ' + (i + 1) + '</b> ≈ ' + fmtW(w) + ' W</span><span class="acts"><button type="button" data-save="' + i + '">Save</button>' +
         '<button type="button" data-edit="' + i + '">Edit</button></span></figcaption></figure>';
     }).join('');
-    $('h-set').textContent = 'All steps for ' + opts.gal + ' gal';
+    $('h-set').textContent = 'All steps for a ' + fmtW(opts.target) + ' W target';
     $('set-panel').hidden = false;
     $('set-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -720,7 +744,7 @@ details[open] summary { margin-bottom: 10px; }
     if (typeof JSZip !== 'function') return Promise.reject(new Error('zip library did not load'));
     var z = new JSZip();
     files.forEach(function (f) { z.file(f.name, f.blob); });
-    return z.generateAsync({ type: 'blob' }).then(function (b) { return { name: 'K7-' + opts.gal + 'gal-steps.zip', blob: b }; });
+    return z.generateAsync({ type: 'blob' }).then(function (b) { return { name: 'K7-' + fmtW(opts.target) + 'W-steps.zip', blob: b }; });
   }
   $('btn-save-all').addEventListener('click', function () {
     if (!setProfiles.length) return;

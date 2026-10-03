@@ -8,20 +8,22 @@ the 24-hour schedule and channel limits, and makes a new QR code to import.
 Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It needs
 `profile.js` next to it and loads two small QR libraries from public CDNs.
 
-1. **Build** a gentle profile: enter the tank size, lights-on time, ramp-up,
-   peak and ramp-down hours (e.g. 1 h / 6 h / 1 h; ramps of 3 h or more are
-   smoothest, since the light holds one point per hour), and a color look, then pick a strength step. Step 1 peaks at
-   0.5 W per gallon and step 6 at 1 W per gallon. The builder never goes higher.
+1. **Build** a gentle profile: enter a full-strength target in watts for this
+   light (or work it out from tank size and number of lights, at about 1 W per
+   gallon), the lights-on time, ramp-up, peak and ramp-down hours (e.g.
+   1 h / 6 h / 1 h; ramps of 3 h or more are smoothest, since the light holds
+   one point per hour), and a color look. Then pick a strength step: step 1 is
+   50% of the target and step 6 is 100%. The builder never goes above the target.
    Move up one step every two weeks while the corals look happy.
-   Or tap **Make all 6 steps** to get every step for your tank size at once,
-   then **Save all** (one .zip) or save each image on its own.
+   Or tap **Make all 6 steps**, then **Save all** to save every image at once
+   (the share sheet on phones, a .zip elsewhere).
    **Or load** an exported QR image from Photos.
 2. **Edit**: drag the channel limits, type values into the hourly grid, or shift
    and scale the curve with the bulk buttons.
 3. **Export**: every generated image has a label printed above the code: the
-   name, estimated peak watts and W/gal, total light hours, main (full-strength)
-   hours, tank size and date. That way saved images stay easy to tell apart in
-   Photos. Light below 3% counts as moonlight and is reported separately, and
+   name, estimated peak watts and share of the target, total light hours, main
+   (full-strength) hours and date. That way saved images stay easy to tell apart in
+   Photos. Steady low light overnight (3% or less) counts as moonlight and is reported separately, and
    schedules that run past midnight are summarized correctly. Press and hold the generated code and choose *Save to Photos*,
    then import it in the Noo-Psyche app.
 
@@ -33,8 +35,8 @@ app reports for a loaded profile under *Match the app's watt reading*.
 
 The QR code only holds the 24 points, so the label printed above it can't be read
 back. When you re-import a profile the builder made, the editor recognizes it,
-puts its settings back in the builder, and restores its name (using the tank
-size currently entered). Profiles from the app or other tools load as plain
+puts its settings back in the builder, and restores its name (using the target
+currently entered). Profiles from the app or other tools load as plain
 points named "Imported profile".
 
 ## QR format

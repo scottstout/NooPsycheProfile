@@ -205,32 +205,41 @@
 
   /*
    * Describe when the light is on, by exact minutes, around the clock.
-   * Points dimmer than `moon` percent (effective, after the channel limit) count
-   * as moonlight rather than daylight, unless the whole profile is that dim.
+   * Light at or below 3% and under 4% of the profile's peak (or at its lowest
+   * level) counts as moonlight; everything brighter is the day, so the fade
+   * points of a dim profile stay part of it. A floor above 6% is not moonlight.
    * Returns { allOff } or { start, end, total, mainStart, mainEnd, main, moonlight }
    * with times in minutes after midnight and durations in minutes.
    */
-  function schedule(profile, moon) {
-    if (moon == null) moon = 3;
+  function schedule(profile) {
     var pts = profile.slots.map(function (s) {
       var eff = s.values.map(function (v, c) { return v * profile.limits[c] / 100; });
       return { t: (s.hour * 60 + s.minute) % 1440, level: Math.max.apply(null, eff), w: slotWatts(profile, s, 1, 1) };
     }).sort(function (a, b) { return a.t - b.t; });
-    var n = pts.length, top = 0, topW = 0;
-    pts.forEach(function (q) { top = Math.max(top, q.level); topW = Math.max(topW, q.w); });
+    var n = pts.length, top = 0, topW = 0, floor = Infinity;
+    pts.forEach(function (q) { top = Math.max(top, q.level); topW = Math.max(topW, q.w); floor = Math.min(floor, q.level); });
     if (top === 0) return { allOff: true };
-    var thr = top > 2 * moon ? moon : 0;
+    // Moonlight: at or below 3% and under 4% of the peak, or the floor itself.
+    var thr = Math.max(floor, Math.min(3, top * 0.04));
     var day = pts.map(function (q) { return q.level > thr; });
-    function gap(a, b) { var d = (b - a + 1440) % 1440; return d; }
-    // Longest circular run of daylight points.
+    function gap(a, b) { return (b - a + 1440) % 1440; }
+    // Longest circular run of daytime points.
     var best = { len: 0, at: 0 };
-    if (day.every(Boolean)) best = { len: n, at: 0 };
+    if (floor > 6 || day.every(function (d) { return !d; })) best = { len: n, at: 0 };
     else {
       for (var i = 0; i < n; i++) {
         if (!day[i] || day[(i - 1 + n) % n]) continue;
         var len = 0; while (len < n && day[(i + len) % n]) len++;
         if (len > best.len) best = { len: len, at: i };
       }
+    }
+    // A fade keeps falling toward off; moonlight holds steady. Pull still-falling low points into the day.
+    if (best.len < n) {
+      var lv = function (i) { return pts[((i % n) + n) % n].level; };
+      var e = best.at + best.len;
+      while (best.len < n - 1 && lv(e) > floor && lv(e) < lv(e - 1) && lv(e + 1) < lv(e)) { best.len++; e++; }
+      var st = best.at - 1;
+      while (best.len < n - 1 && lv(st) > floor && lv(st) < lv(st + 1) && lv(st - 1) < lv(st)) { best.len++; best.at = (best.at - 1 + n) % n; st--; }
     }
     var out = {};
     if (best.len === n) { out.start = 0; out.end = 0; out.total = 1440; }
@@ -239,15 +248,14 @@
       out.end = pts[(best.at + best.len) % n].t;
       out.total = gap(out.start, out.end) || 1440;
     }
-    // Main: the run of points within 2% of the peak draw, inside the daylight run.
+    // Main: the run of points within 2% of the peak draw, inside the day.
     var runIdx = []; for (var j = 0; j < best.len; j++) runIdx.push((best.at + j) % n);
-    var hi = runIdx.filter(function (ix) { return pts[ix].w >= topW * 0.98; });
-    out.mainStart = pts[hi[0]].t; out.mainEnd = pts[hi[hi.length - 1]].t;
-    out.main = gap(out.mainStart, out.mainEnd);
-    // Moonlight: the brightest point outside the daylight run, if any light at all.
     var night = 0;
     for (var m = 0; m < n; m++) if (runIdx.indexOf(m) < 0) night = Math.max(night, pts[m].level);
     out.moonlight = night;
+    var hi = runIdx.filter(function (ix) { return pts[ix].w >= topW * 0.98; });
+    out.mainStart = pts[hi[0]].t; out.mainEnd = pts[hi[hi.length - 1]].t;
+    out.main = gap(out.mainStart, out.mainEnd);
     return out;
   }
 
