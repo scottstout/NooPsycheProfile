@@ -683,23 +683,37 @@ details[open] summary { margin-bottom: 10px; }
     return new Blob([buf], { type: 'image/png' });
   }
   function saveNote(msg, kind) { var el = $('set-panel').hidden ? $('raw-status') : $('save-status'); el.hidden = false; el.textContent = msg; el.className = 'status ' + (kind || 'note'); }
-  var dlPromise = window.claude && window.claude.use ? window.claude.use('downloads').catch(function () { return null; }) : Promise.resolve(null);
-  // files: [{name, blob}]. One file saves as-is; several go into one .zip unless the browser can share them all at once.
+  // Inside the Claude viewer, saves go through its downloads capability. On a plain web page (e.g. GitHub Pages),
+  // phones that can share files get the share sheet, whose "Save Image(s)" puts them straight into Photos.
+  var dl = null;
+  if (window.claude && window.claude.use) window.claude.use('downloads').then(function (d) { dl = d; updateSaveUI(); }, function () {});
+  function canShareFiles(files) {
+    try { return !!(navigator.canShare && navigator.share && navigator.canShare({ files: files })); } catch (e) { return false; }
+  }
+  function shareAvailable() { return !dl && typeof File === 'function' && canShareFiles([new File([new Blob(['x'], { type: 'image/png' })], 'x.png', { type: 'image/png' })]); }
+  function updateSaveUI() {
+    var share = shareAvailable();
+    $('btn-save-all').textContent = share ? 'Save all to Photos' : 'Save all (.zip)';
+    $('save-help').textContent = share
+      ? 'Save all opens the share sheet with every image; choose Save Images to put them in Photos. Each code also has its own Save button.'
+      : 'Save each code with its Save button, or press and hold it. Save all puts every image in one .zip file.';
+  }
+  // files: [{name, blob}]. Called straight from a tap so the share sheet is allowed to open.
   function saveFiles(files) {
-    return dlPromise.then(function (dl) {
-      if (!dl && files.length > 1 && navigator.canShare && typeof File === 'function') {
-        var fs = files.map(function (f) { return new File([f.blob], f.name, { type: 'image/png' }); });
-        if (navigator.canShare({ files: fs })) return navigator.share({ files: fs }).then(function () { saveNote('Shared ' + fs.length + ' images.', 'ok'); }, function () {});
+    if (shareAvailable()) {
+      var fs = files.map(function (f) { return new File([f.blob], f.name, { type: 'image/png' }); });
+      if (canShareFiles(fs)) {
+        return navigator.share({ files: fs }).then(function () { saveNote('Shared ' + fs.length + (fs.length === 1 ? ' image.' : ' images.'), 'ok'); }, function () {});
       }
-      var job = files.length === 1 ? Promise.resolve({ name: files[0].name, blob: files[0].blob }) : zip(files);
-      return job.then(function (f) {
-        if (dl) return dl.save({ filename: f.name, data: f.blob }).then(function () { saveNote('Saved ' + f.name + '.', 'ok'); }, function (e) {
-          if (e && e.code === 'declined') return;
-          saveNote('Could not save: ' + ((e && e.message) || 'saving is not available here') + '. Press and hold each code instead.', 'err');
-        });
-        var a = document.createElement('a'); a.href = URL.createObjectURL(f.blob); a.download = f.name;
-        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+    var job = files.length === 1 ? Promise.resolve({ name: files[0].name, blob: files[0].blob }) : zip(files);
+    return job.then(function (f) {
+      if (dl) return dl.save({ filename: f.name, data: f.blob }).then(function () { saveNote('Saved ' + f.name + '.', 'ok'); }, function (e) {
+        if (e && e.code === 'declined') return;
+        saveNote('Could not save: ' + ((e && e.message) || 'saving is not available here') + '. Press and hold each code instead.', 'err');
       });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(f.blob); a.download = f.name;
+      document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     });
   }
   function zip(files) {
@@ -717,6 +731,7 @@ details[open] summary { margin-bottom: 10px; }
     saveFiles([{ name: fileName($('name').value || 'K7 profile'), blob: dataUrlBlob($('qr').src) }]).catch(function () {});
   });
 
+  updateSaveUI();
   drawBuilder(); fitChart();
   drawLegend(); changed(true);
 })();
