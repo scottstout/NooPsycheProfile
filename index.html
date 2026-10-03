@@ -439,19 +439,15 @@ details[open] summary { margin-bottom: 10px; }
 
   // ---------- export ----------
   function today() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-  function hm(h) { return pad(h % 24) + ':00'; }
-  function dur(h) { return h + ' h'; }
+  function hm(m) { return pad(Math.floor(m / 60) % 24) + ':' + pad(m % 60); }
+  function dur(m) { var h = Math.floor(m / 60), r = m % 60; return r ? (h ? h + ' h ' : '') + r + ' min' : h + ' h'; }
   function schedule(p) {
-    var lit = p.slots.map(function (s) { return s.values.some(function (v) { return v > 0; }); });
-    var first = lit.indexOf(true), last = lit.lastIndexOf(true);
-    if (first < 0) return 'Lights off all day';
-    var on = first > 0 ? p.slots[first - 1].hour : p.slots[first].hour;
-    var off = last < p.slots.length - 1 ? p.slots[last + 1].hour : 24;
-    var top = P.peak(p, 1, 1).watts, hi = [];
-    p.slots.forEach(function (s, i) { if (P.slotWatts(p, s, 1, 1) >= top * 0.98) hi.push(i); });
-    var ms = p.slots[hi[0]].hour, me = p.slots[hi[hi.length - 1]].hour;
-    return 'Total ' + dur(off - on) + ' (' + hm(on) + '–' + hm(off) + ') · Main ' +
-      (me > ms ? dur(me - ms) + ' (' + hm(ms) + '–' + hm(me) + ')' : 'peak at ' + hm(ms));
+    var s = P.schedule(p);
+    if (s.allOff) return 'Lights off all day';
+    var txt = s.total >= 1440 ? 'On 24 h' : 'Total ' + dur(s.total) + ' (' + hm(s.start) + '–' + hm(s.end) + ')';
+    txt += ' · ' + (s.main > 0 ? 'Main ' + dur(s.main) + ' (' + hm(s.mainStart) + '–' + hm(s.mainEnd) + ')' : 'Peak at ' + hm(s.mainStart));
+    if (s.moonlight > 0) txt += ' · Moonlight ' + Math.round(s.moonlight) + '% overnight';
+    return txt;
   }
   function describe(p, title) {
     var w = P.peak(p, opts.fixture, opts.factor).watts, target = opts.gal;
@@ -530,8 +526,13 @@ details[open] summary { margin-bottom: 10px; }
       if (!text) { setStatus('No QR code found in that image. Use the original exported image, not a cropped screenshot.', 'err'); return; }
       try {
         var p = P.parse(text); load(p);
-        setStatus('Loaded ' + f.name + ': ' + p.channels.length + ' channels, ' + p.slots.length + ' points.', 'ok');
-        var base = f.name.replace(/\.[^.]+$/, ''); if (base) { $('name').value = base; drawQR(); }
+        var known = recognizeBuilt(p);
+        $('name').value = known ? known.name : 'Imported profile';
+        try { localStorage.setItem('k7-name', $('name').value); } catch (e) {}
+        drawQR();
+        setStatus(known
+          ? 'Recognized "' + known.name + '", made with this builder. Its settings are back in the builder above.'
+          : 'Loaded a profile from another source: ' + p.channels.length + ' channels, ' + p.slots.length + ' points. Rename it under Export.', 'ok');
       } catch (e) {
         $('raw').value = text;
         setStatus('The QR code was read, but it does not match the known layout: ' + e.message + ' Its raw contents are in the Export section.', 'err');
@@ -541,6 +542,21 @@ details[open] summary { margin-bottom: 10px; }
     img.src = url;
     this.value = '';
   });
+
+  // ---------- recognizing builder profiles ----------
+  var NOMINAL = [25, 50, 60, 70, 75, 80, 90, 100];
+  function recognizeBuilt(p) {
+    var r = P.recognize(p); if (!r) return null;
+    var w = P.peak(p, opts.fixture, opts.factor).watts, pct = w / opts.gal * 100, nominal = null;
+    // The builder lands at or just under its target, so look for the nearest target at or above.
+    NOMINAL.forEach(function (n) { if (nominal == null && pct <= n + 0.5 && pct >= n * 0.85) nominal = n; });
+    opts.look = r.look; opts.on = r.on; opts.up = r.rampUp; opts.down = r.rampDown;
+    opts.peak = r.off - r.on - r.rampUp - r.rampDown; opts.warm = r.warmEvening;
+    var si = STEPS.findIndex(function (x) { return Math.round(x * 100) === nominal; });
+    if (si >= 0) opts.step = si;
+    saveOpts(); drawBuilder();
+    return { name: opts.gal + ' gal · ' + (nominal != null ? nominal : Math.round(pct)) + '% · ' + P.LOOKS[r.look].label };
+  }
 
   // ---------- builder ----------
   function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }

@@ -20,12 +20,21 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
 3. **Export**: every generated image has a label printed above the code: the
    name, estimated peak watts and W/gal, total light hours, main (full-strength)
    hours, tank size and date. That way saved images stay easy to tell apart in
-   Photos. Press and hold the generated code and choose *Save to Photos*,
+   Photos. Light below 3% counts as moonlight and is reported separately, and
+   schedules that run past midnight are summarized correctly. Press and hold the generated code and choose *Save to Photos*,
    then import it in the Noo-Psyche app.
 
 Watts are estimated from the fixture rating (100 W for the K7 Pro IV), assuming
 each channel draws an equal share. To correct the estimate, enter the wattage the
 app reports for a loaded profile under *Match the app's watt reading*.
+
+## Re-importing
+
+The QR code only holds the 24 points, so the label printed above it can't be read
+back. When you re-import a profile the builder made, the editor recognizes it,
+puts its settings back in the builder, and restores its name (using the tank
+size currently entered). Profiles from the app or other tools load as plain
+points named "Imported profile".
 
 ## QR format
 
