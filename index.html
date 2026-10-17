@@ -220,8 +220,8 @@ details[open] summary { margin-bottom: 10px; }
     </div>
     <div class="field">
       <div class="row between"><span class="label">Strength step</span>
-        <div class="seg" id="fine" role="radiogroup" aria-label="Number of steps"><button type="button" role="radio" data-fine="0">6 steps</button><button type="button" role="radio" data-fine="1">11 half steps</button></div></div>
-      <p class="note">The last step is your full target. The steps below it start at 25% of it, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to the last step. Half steps go up 7.5 points at a time instead of 15, keeping every one of the 6 steps in between.</p>
+        <div class="seg" id="fine" role="radiogroup" aria-label="Number of steps"><button type="button" role="radio" data-fine="0">6 steps</button><button type="button" role="radio" data-fine="1">12 steps</button></div></div>
+      <p class="note">The last step is your full target. The steps below it start at 25% of it, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to the last step. With 12 steps each one goes up about 7 points instead of 15.</p>
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
       <details>
@@ -359,17 +359,17 @@ details[open] summary { margin-bottom: 10px; }
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  // Share of the full-strength target at peak. Half steps add one between each pair, so both include 25%, 40%, ... 100%.
-  var STEPS6 = [0.25, 0.40, 0.55, 0.70, 0.85, 1.0];
-  var STEPS11 = [0.25, 0.325, 0.40, 0.475, 0.55, 0.625, 0.70, 0.775, 0.85, 0.925, 1.0];
+  // Share of the full-strength target at peak: 6 or 12 even steps from 25% to 100%.
+  function evenSteps(n) { var a = []; for (var i = 0; i < n; i++) a.push(0.25 + 0.75 * i / (n - 1)); return a; }
+  var STEPS6 = evenSteps(6), STEPS12 = evenSteps(12);
   var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1, fine: false };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
   try { if (!JSON.parse(localStorage.getItem('k7-build') || '{}').target) opts.target = opts.gal; } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
   function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
-  var STEPS = opts.fine ? STEPS11 : STEPS6;
+  var STEPS = opts.fine ? STEPS12 : STEPS6;
   if (!(opts.step >= 0 && opts.step < STEPS.length)) opts.step = 0;
-  function pctOf(i) { return Math.round(STEPS[i] * 200) / 2 + '%'; }
+  function pctOf(i) { return Math.round(STEPS[i] * 1000) / 10 + '%'; }
   function stepWatts(i) { return opts.target * STEPS[i]; }
   // The shape the steps scale: the builder's (null) or a loaded profile.
   var shape = null;
@@ -794,12 +794,13 @@ details[open] summary { margin-bottom: 10px; }
   $('down').addEventListener('change', function () { opts.down = +this.value; builderChange(); });
   $('warm').addEventListener('change', function () { opts.warm = this.checked; builderChange(); });
   $('look').addEventListener('click', function (e) { var k = e.target.closest('[data-look]'); if (k) { opts.look = k.getAttribute('data-look'); builderChange(); } });
-  // Switching keeps the same strength: step k of 6 is step 2k of 11; a half step drops to the 6-step one below it.
+  // Switching keeps the strength or drops to the nearest step below it.
   $('fine').addEventListener('click', function (e) {
     var k = e.target.closest('[data-fine]'); if (!k) return;
     var fine = k.getAttribute('data-fine') === '1'; if (fine === !!opts.fine) return;
-    opts.step = fine ? opts.step * 2 : Math.floor(opts.step / 2);
-    opts.fine = fine; STEPS = fine ? STEPS11 : STEPS6; builderChange();
+    var was = STEPS[opts.step], next = fine ? STEPS12 : STEPS6;
+    opts.step = next.filter(function (x) { return x <= was + 1e-9; }).length - 1;
+    opts.fine = fine; STEPS = next; builderChange();
   });
   $('steps').addEventListener('click', function (e) { var k = e.target.closest('[data-step]'); if (k) { opts.step = +k.getAttribute('data-step'); builderChange(); } });
   $('btn-build').addEventListener('click', useBuilt);
