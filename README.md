@@ -28,7 +28,8 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    shape redraws it straight away; once you edit the curve by hand, tap
    **Use this profile** to rebuild.
 2. **Inspect and edit**: tap or drag on the curve to read every channel at that
-   time. Drag the channel limits, type values into the hourly grid, or shift
+   time. **Fit** zooms the scale to the brightest channel so dim steps are
+   easy to read; **0–100%** shows the full range for scaling up by hand. Drag the channel limits, type values into the hourly grid, or shift
    and scale the curve with the bulk buttons.
 3. **Export**: every generated image has a label printed above the code: the
    name, estimated peak watts and share of the target, total light hours, main

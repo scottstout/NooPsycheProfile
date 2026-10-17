@@ -287,10 +287,13 @@ details[open] summary { margin-bottom: 10px; }
       <h2 id="h-curve">24-hour curve</h2>
       <div id="legend" class="legend"></div>
     </div>
-    <p id="watts" class="watts"></p>
+    <div class="row between">
+      <p id="watts" class="watts"></p>
+      <div class="seg" id="zoom" role="radiogroup" aria-label="Curve scale"><button type="button" role="radio" data-zoom="fit">Fit</button><button type="button" role="radio" data-zoom="full">0–100%</button></div>
+    </div>
     <svg id="chart" class="chart" viewBox="0 0 920 300" role="slider" tabindex="0" aria-label="Time of day on the curve" aria-valuemin="0" aria-valuemax="1439"></svg>
     <div id="at" class="at" aria-live="polite"></div>
-    <p class="note">Tap or drag on the curve to read every channel at that time. Between points, values assume the light fades evenly.</p>
+    <p class="note">Tap or drag on the curve to read every channel at that time. Between points, values assume the light fades evenly. Fit stretches the scale to the brightest channel; switch to 0–100% to see how much room there is above it.</p>
   </section>
 
   <section class="panel" aria-labelledby="h-limits">
@@ -391,10 +394,25 @@ details[open] summary { margin-bottom: 10px; }
   function fitChart() { W = $('chart').getBoundingClientRect().width < 600 ? 460 : 920; $('chart').setAttribute('viewBox', '0 0 ' + W + ' ' + H); }
   window.addEventListener('resize', function () { var w = W; fitChart(); if (w !== W) drawChart(); });
   function x(min) { return L + (min / 1440) * (W - L - R); }
-  function y(v) { return T + (1 - v / 100) * (H - T - B); }
+  // Top of the vertical scale: 100%, or zoomed to the brightest channel so dim steps fill the chart.
+  var zoom = 'fit', yTop = 100;
+  try { if (localStorage.getItem('k7-zoom') === 'full') zoom = 'full'; } catch (e) {}
+  function fitTop(p) {
+    var m = 0;
+    p.slots.forEach(function (s) { s.values.forEach(function (v, c) { m = Math.max(m, v * p.limits[c] / 100); }); });
+    return [4, 8, 12, 20, 40, 60, 80, 100].filter(function (t) { return t >= m * 1.05; })[0] || 100;
+  }
+  function y(v) { return T + (1 - Math.min(v, yTop) / yTop) * (H - T - B); }
+  function drawZoom() { document.querySelectorAll('[data-zoom]').forEach(function (b) { b.setAttribute('aria-checked', b.getAttribute('data-zoom') === zoom); }); }
+  $('zoom').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-zoom]'); if (!b) return;
+    zoom = b.getAttribute('data-zoom'); try { localStorage.setItem('k7-zoom', zoom); } catch (er) {}
+    drawZoom(); drawChart();
+  });
   function drawChart() {
     var svg = $('chart'), p = state.profile, out = [];
-    for (var v = 0; v <= 100; v += 25) {
+    yTop = zoom === 'full' ? 100 : fitTop(p);
+    for (var v = 0; v <= yTop; v += yTop / 4) {
       out.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--grid)" stroke-width="1"/>');
       out.push('<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '%</text>');
     }
@@ -859,7 +877,7 @@ details[open] summary { margin-bottom: 10px; }
 
   updateSaveUI();
   drawBuilder(); fitChart();
-  drawLegend(); changed(true);
+  drawZoom(); drawLegend(); changed(true);
 })();
 </script>
 </body>
