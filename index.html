@@ -144,7 +144,7 @@ details[open] summary { margin-bottom: 10px; }
 }
 .unit input[type=number] { width: 6em; }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-.seg button { flex: 1; border: 0; border-radius: 0; padding: 7px 8px; font-weight: 500; }
+.seg button { flex: 1; border: 0; border-radius: 0; padding: 7px 8px; font-weight: 500; white-space: nowrap; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-checked="true"], .steps button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
@@ -219,8 +219,9 @@ details[open] summary { margin-bottom: 10px; }
       </div>
     </div>
     <div class="field">
-      <span class="label">Strength step</span>
-      <p class="note">Step 6 is your full target. Steps 1 to 5 run from 25% to 85% of it, 15 points apart, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to step 6.</p>
+      <div class="row between"><span class="label">Strength step</span>
+        <div class="seg" id="fine" role="radiogroup" aria-label="Number of steps"><button type="button" role="radio" data-fine="0">6 steps</button><button type="button" role="radio" data-fine="1">12 steps</button></div></div>
+      <p class="note">The last step is your full target. The steps below it start at 25% of it, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to the last step. With 12 steps each one goes up about 7 points instead of 15.</p>
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
       <details>
@@ -235,7 +236,7 @@ details[open] summary { margin-bottom: 10px; }
     <div class="row" id="warm-row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
-      <button id="btn-set" type="button">Make all 6 steps</button>
+      <button id="btn-set" type="button">Make all <span id="set-n">6</span> steps</button>
     </div>
     <p id="build-sum" class="note"></p>
     <details>
@@ -287,10 +288,13 @@ details[open] summary { margin-bottom: 10px; }
       <h2 id="h-curve">24-hour curve</h2>
       <div id="legend" class="legend"></div>
     </div>
-    <p id="watts" class="watts"></p>
+    <div class="row between">
+      <p id="watts" class="watts"></p>
+      <div class="seg" id="zoom" role="radiogroup" aria-label="Curve scale"><button type="button" role="radio" data-zoom="fit">Fit</button><button type="button" role="radio" data-zoom="full">0–100%</button></div>
+    </div>
     <svg id="chart" class="chart" viewBox="0 0 920 300" role="slider" tabindex="0" aria-label="Time of day on the curve" aria-valuemin="0" aria-valuemax="1439"></svg>
     <div id="at" class="at" aria-live="polite"></div>
-    <p class="note">Tap or drag on the curve to read every channel at that time. Between points, values assume the light fades evenly.</p>
+    <p class="note">Tap or drag on the curve to read every channel at that time. Between points, values assume the light fades evenly. Fit stretches the scale to the brightest channel; switch to 0–100% to see how much room there is above it.</p>
   </section>
 
   <section class="panel" aria-labelledby="h-limits">
@@ -355,13 +359,17 @@ details[open] summary { margin-bottom: 10px; }
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  var STEPS = [0.25, 0.40, 0.55, 0.70, 0.85, 1.0]; // share of the full-strength target at peak
-  var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
+  // Share of the full-strength target at peak: 6 or 12 even steps from 25% to 100%.
+  function evenSteps(n) { var a = []; for (var i = 0; i < n; i++) a.push(0.25 + 0.75 * i / (n - 1)); return a; }
+  var STEPS6 = evenSteps(6), STEPS12 = evenSteps(12);
+  var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1, fine: false };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
   try { if (!JSON.parse(localStorage.getItem('k7-build') || '{}').target) opts.target = opts.gal; } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
   function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
+  var STEPS = opts.fine ? STEPS12 : STEPS6;
   if (!(opts.step >= 0 && opts.step < STEPS.length)) opts.step = 0;
+  function pctOf(i) { return Math.round(STEPS[i] * 1000) / 10 + '%'; }
   function stepWatts(i) { return opts.target * STEPS[i]; }
   // The shape the steps scale: the builder's (null) or a loaded profile.
   var shape = null;
@@ -391,10 +399,25 @@ details[open] summary { margin-bottom: 10px; }
   function fitChart() { W = $('chart').getBoundingClientRect().width < 600 ? 460 : 920; $('chart').setAttribute('viewBox', '0 0 ' + W + ' ' + H); }
   window.addEventListener('resize', function () { var w = W; fitChart(); if (w !== W) drawChart(); });
   function x(min) { return L + (min / 1440) * (W - L - R); }
-  function y(v) { return T + (1 - v / 100) * (H - T - B); }
+  // Top of the vertical scale: 100%, or zoomed to the brightest channel so dim steps fill the chart.
+  var zoom = 'fit', yTop = 100;
+  try { if (localStorage.getItem('k7-zoom') === 'full') zoom = 'full'; } catch (e) {}
+  function fitTop(p) {
+    var m = 0;
+    p.slots.forEach(function (s) { s.values.forEach(function (v, c) { m = Math.max(m, v * p.limits[c] / 100); }); });
+    return [4, 8, 12, 20, 40, 60, 80, 100].filter(function (t) { return t >= m * 1.05; })[0] || 100;
+  }
+  function y(v) { return T + (1 - Math.min(v, yTop) / yTop) * (H - T - B); }
+  function drawZoom() { document.querySelectorAll('[data-zoom]').forEach(function (b) { b.setAttribute('aria-checked', b.getAttribute('data-zoom') === zoom); }); }
+  $('zoom').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-zoom]'); if (!b) return;
+    zoom = b.getAttribute('data-zoom'); try { localStorage.setItem('k7-zoom', zoom); } catch (er) {}
+    drawZoom(); drawChart();
+  });
   function drawChart() {
     var svg = $('chart'), p = state.profile, out = [];
-    for (var v = 0; v <= 100; v += 25) {
+    yTop = zoom === 'full' ? 100 : fitTop(p);
+    for (var v = 0; v <= yTop; v += yTop / 4) {
       out.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--grid)" stroke-width="1"/>');
       out.push('<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '%</text>');
     }
@@ -659,7 +682,7 @@ details[open] summary { margin-bottom: 10px; }
   }
 
   // ---------- builder ----------
-  function stepName(i) { return 'Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + fmtW(stepWatts(i)) + ' W · ' + (shape ? shape.name : P.LOOKS[opts.look].label); }
+  function stepName(i) { return 'Step ' + (i + 1) + ' (' + pctOf(i) + ') · ' + fmtW(stepWatts(i)) + ' W · ' + (shape ? shape.name : P.LOOKS[opts.look].label); }
   function fileName(name) { return name.replace(/[^A-Za-z0-9%]+/g, '-').replace(/%/g, 'pct').replace(/^-|-$/g, '') + '.png'; }
   function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }
   function drawWatts() {
@@ -687,14 +710,16 @@ details[open] summary { margin-bottom: 10px; }
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
       return '<button type="button" role="radio" data-look="' + k + '" aria-checked="' + (k === opts.look) + '">' + P.LOOKS[k].label + '</button>';
     }).join('');
+    document.querySelectorAll('[data-fine]').forEach(function (b) { b.setAttribute('aria-checked', (b.getAttribute('data-fine') === '1') === !!opts.fine); });
+    $('set-n').textContent = STEPS.length;
     $('steps').innerHTML = STEPS.map(function (r, i) {
       return '<button type="button" role="radio" data-step="' + i + '" aria-checked="' + (i === opts.step) + '"><b>' + (i + 1) + '</b><small>' + fmtW(stepWatts(i)) + ' W</small></button>';
     }).join('');
     var off = offHour(), ok = shape ? true : off <= 24;
-    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + Math.round(STEPS[opts.step] * 100) + '% of your target). ' +
+    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + pctOf(opts.step) + ' of your target). ' +
       (opts.step === 0 ? 'Start here when acclimating.' : opts.step === STEPS.length - 1 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after a week or two of happy corals on the step below.');
     var sid = shapeId();
-    $('shape-pick').innerHTML = '<option value="">The builder\'s curve (set below)</option>' +
+    $('shape-pick').innerHTML = '<option value="">Custom profile (set times and color below)</option>' +
       Object.keys(STOCK).map(function (k) { return '<option value="' + k + '"' + (k === sid ? ' selected' : '') + '>' + STOCK[k].name + '</option>'; }).join('') +
       (shape && !sid ? '<option value="custom" selected>' + esc(shape.name) + ' (loaded)</option>' : '');
     $('shape-inputs').hidden = !!shape; $('warm-row').hidden = !!shape;
@@ -745,11 +770,17 @@ details[open] summary { margin-bottom: 10px; }
   // The K7 Pro IV's built-in profiles, exported from the Noo-Psyche app, plus BeanAnimal's
   // published S/L profile (beananimal.com K7 profile generator, shared on Reef2Reef).
   var STOCK = {
-    BA: { name: 'BeanAnimal S/L', note: 'Each color on its own bell curve, peaking at different times, from BeanAnimal\'s generator.', text: '006464646464#0000000100010100010000000001000002000000000000000300000000000000040000000000000005000000000000000600000000010000070001010001010108000202000104010900030600020A020A00080D000612030B000E15000C1A080C00171D0312220E0D001C25081A29110E001D2B0C212E120F0019300E263111100012310E28320E11000C300927310A1200072C04222F0513000525021929031400041B0110210215000311000817011600020900040E001700010400020500' },
+    BA: { name: 'BeanAnimal S/L', note: 'Each color on its own bell curve, peaking at different times, from BeanAnimal\'s generator.', text: '646464646464#0000000100010100010000000001000002000000000000000300000000000000040000000000000005000000000000000600000000010000070001010001010108000202000104010900030600020A020A00080D000612030B000E15000C1A080C00171D0312220E0D001C25081A29110E001D2B0C212E120F0019300E263111100012310E28320E11000C300927310A1200072C04222F0513000525021929031400041B0110210215000311000817011600020900040E001700010400020500' },
     LPS: { name: 'K7 stock LPS', text: '323232323232#0000000000000000010000000000000002000000000000000300000000000000040000000000000005000000000000000600000000000000070000000000000008000000000000000900000A00030A000A00011E14051E000B000550320A50000C000550320A50000D000550320A50000E000550320A50000F000550320A500010000550320A500011000550320A500012000550320A50001300011E14051E001400000A00030A00150000000000000016000000000000001700000000000000' },
     SL: { name: 'K7 stock mixed (S/L)', text: '323232323232#00000000000000000100000000000000020000000000000003000000000000000400000000000000050000000000000006000000000000000700000000000000080000000000000009000514141414000A000A28282828050B001E5A5A465A140C001E5A5A465A140D001E5A5A465A140E001E5A5A465A140F001E5A5A465A1410001E5A5A465A1411001E5A5A465A1412001E5A5A465A1413000A28282828051400051414141400150000000000000016000000000000001700000000000000' },
     SPS: { name: 'K7 stock SPS', text: '323232323232#00000000000000000100000000000000020000000000000003000000000000000400000000000000050000000000000006000000000000000700000000000000080000000000000009001E1E1E1E1E1E0A003232323232320B005F5F5F5F5F5F0C005F5F5F5F5F5F0D005F5F5F5F5F5F0E005F5F5F5F5F5F0F005F5F5F5F5F5F10005F5F5F5F5F5F11005F5F5F5F5F5F12005F5F5F5F5F5F130032323232323214001E1E1E1E1E1E150000000000000016000000000000001700000000000000' }
   };
+  // Earlier copies of BeanAnimal's profile carried his White channel at 0%, which hid white entirely.
+  if (shape && /^006464646464#/.test(P.serialize(shape.p)) && P.serialize(shape.p).slice(12) === STOCK.BA.text.slice(12)) {
+    shape.p = P.parse(STOCK.BA.text); saveShape();
+    if (state.live) state.profile = built();
+  }
+
   function setTarget(v) { v = Math.round(v * 2) / 2; opts.target = isFinite(v) && v >= 1 ? Math.min(400, v) : opts.target; builderChange(); drawWatts(); }
   function calcWatts() { return Math.round(opts.gal / Math.max(1, opts.lights) * 2) / 2; }
   $('target').addEventListener('change', function () { setTarget(+this.value); });
@@ -763,6 +794,14 @@ details[open] summary { margin-bottom: 10px; }
   $('down').addEventListener('change', function () { opts.down = +this.value; builderChange(); });
   $('warm').addEventListener('change', function () { opts.warm = this.checked; builderChange(); });
   $('look').addEventListener('click', function (e) { var k = e.target.closest('[data-look]'); if (k) { opts.look = k.getAttribute('data-look'); builderChange(); } });
+  // Switching keeps the strength or drops to the nearest step below it.
+  $('fine').addEventListener('click', function (e) {
+    var k = e.target.closest('[data-fine]'); if (!k) return;
+    var fine = k.getAttribute('data-fine') === '1'; if (fine === !!opts.fine) return;
+    var was = STEPS[opts.step], next = fine ? STEPS12 : STEPS6;
+    opts.step = next.filter(function (x) { return x <= was + 1e-9; }).length - 1;
+    opts.fine = fine; STEPS = next; builderChange();
+  });
   $('steps').addEventListener('click', function (e) { var k = e.target.closest('[data-step]'); if (k) { opts.step = +k.getAttribute('data-step'); builderChange(); } });
   $('btn-build').addEventListener('click', useBuilt);
   $('fixture').addEventListener('change', function () { var v = +this.value; opts.fixture = v > 0 ? v : 100; builderChange(); drawWatts(); });
@@ -859,7 +898,7 @@ details[open] summary { margin-bottom: 10px; }
 
   updateSaveUI();
   drawBuilder(); fitChart();
-  drawLegend(); changed(true);
+  drawZoom(); drawLegend(); changed(true);
 })();
 </script>
 </body>

@@ -15,11 +15,12 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    one point per hour), and a color look. Then pick one of 6 strength steps: step 6 is the full target, and
    steps 1 to 5 (25%, 40%, 55%, 70%, 85%) are for acclimating a new tank or new
    corals; start below where they look happiest and move up a step every
-   week or two while they stay happy. The builder never goes
+   week or two while they stay happy. If a 15-point jump is too big, switch to
+   **12 steps** (25%, 31.8%, 38.6%, ... 100%), about 7 points apart. The builder never goes
    above the target.
-   Or tap **Make all 6 steps**, then **Save all** to save every image at once
+   Or tap **Make all steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
-   **Start from** picks the curve the steps scale: the builder's own (set by the
+   **Start from** picks the curve the steps scale: the **Custom profile** (set by the
    times and color), one of the Noo-Psyche stock profiles (LPS, mixed, SPS), or
    BeanAnimal's S/L profile. A stock or community profile keeps its own timing,
    colors and moonlight, and each step scales it to your target. To start from
@@ -28,7 +29,8 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    shape redraws it straight away; once you edit the curve by hand, tap
    **Use this profile** to rebuild.
 2. **Inspect and edit**: tap or drag on the curve to read every channel at that
-   time. Drag the channel limits, type values into the hourly grid, or shift
+   time. **Fit** zooms the scale to the brightest channel so dim steps are
+   easy to read; **0–100%** shows the full range for scaling up by hand. Drag the channel limits, type values into the hourly grid, or shift
    and scale the curve with the bulk buttons.
 3. **Export**: every generated image has a label printed above the code: the
    name, estimated peak watts and share of the target, total light hours, main
