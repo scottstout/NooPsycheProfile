@@ -719,7 +719,7 @@ details[open] summary { margin-bottom: 10px; }
     $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + pctOf(opts.step) + ' of your target). ' +
       (opts.step === 0 ? 'Start here when acclimating.' : opts.step === STEPS.length - 1 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after a week or two of happy corals on the step below.');
     var sid = shapeId();
-    $('shape-pick').innerHTML = '<option value="">The builder\'s curve (set below)</option>' +
+    $('shape-pick').innerHTML = '<option value="">Simple profile (set times and color below)</option>' +
       Object.keys(STOCK).map(function (k) { return '<option value="' + k + '"' + (k === sid ? ' selected' : '') + '>' + STOCK[k].name + '</option>'; }).join('') +
       (shape && !sid ? '<option value="custom" selected>' + esc(shape.name) + ' (loaded)</option>' : '');
     $('shape-inputs').hidden = !!shape; $('warm-row').hidden = !!shape;
