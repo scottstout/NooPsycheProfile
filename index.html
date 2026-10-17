@@ -219,8 +219,9 @@ details[open] summary { margin-bottom: 10px; }
       </div>
     </div>
     <div class="field">
-      <span class="label">Strength step</span>
-      <p class="note">Step 6 is your full target. Steps 1 to 5 run from 25% to 85% of it, 15 points apart, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to step 6.</p>
+      <div class="row between"><span class="label">Strength step</span>
+        <div class="seg" id="fine" role="radiogroup" aria-label="Number of steps"><button type="button" role="radio" data-fine="0">6 steps</button><button type="button" role="radio" data-fine="1">11 half steps</button></div></div>
+      <p class="note">The last step is your full target. The steps below it start at 25% of it, for acclimating: a new tank, newly added corals, or corals moving from a weaker light. Start below where your corals look happiest and work up. Corals already used to this light can go straight to the last step. Half steps go up 7.5 points at a time instead of 15, keeping every one of the 6 steps in between.</p>
       <div class="steps" id="steps" role="radiogroup" aria-label="Strength step"></div>
       <p class="note" id="step-note"></p>
       <details>
@@ -235,7 +236,7 @@ details[open] summary { margin-bottom: 10px; }
     <div class="row" id="warm-row"><label class="chip check"><input id="warm" type="checkbox" checked> Fade blues faster in the evening</label><span id="warm-note" class="note"></span></div>
     <div class="row">
       <button id="btn-build" class="primary" type="button">Use this profile</button>
-      <button id="btn-set" type="button">Make all 6 steps</button>
+      <button id="btn-set" type="button">Make all <span id="set-n">6</span> steps</button>
     </div>
     <p id="build-sum" class="note"></p>
     <details>
@@ -358,13 +359,17 @@ details[open] summary { margin-bottom: 10px; }
   var FALLBACK = ['--ch-blue', '--ch-cyan', '--ch-green', '--ch-uv', '--ch-red', '--ch-white'];
   var $ = function (id) { return document.getElementById(id); };
 
-  var STEPS = [0.25, 0.40, 0.55, 0.70, 0.85, 1.0]; // share of the full-strength target at peak
-  var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1 };
+  // Share of the full-strength target at peak. Half steps add one between each pair, so both include 25%, 40%, ... 100%.
+  var STEPS6 = [0.25, 0.40, 0.55, 0.70, 0.85, 1.0];
+  var STEPS11 = [0.25, 0.325, 0.40, 0.475, 0.55, 0.625, 0.70, 0.775, 0.85, 0.925, 1.0];
+  var opts = { target: 15, gal: 15, lights: 1, on: 10, up: 2, peak: 6, down: 2, look: 'balanced', step: 0, warm: true, fixture: 100, factor: 1, fine: false };
   try { var so = JSON.parse(localStorage.getItem('k7-build') || 'null'); if (so) Object.keys(opts).forEach(function (k) { if (k in so) opts[k] = so[k]; }); } catch (e) {}
   try { if (!JSON.parse(localStorage.getItem('k7-build') || '{}').target) opts.target = opts.gal; } catch (e) {}
   function saveOpts() { try { localStorage.setItem('k7-build', JSON.stringify(opts)); } catch (e) {} }
   function offHour() { return opts.on + opts.up + opts.peak + opts.down; }
+  var STEPS = opts.fine ? STEPS11 : STEPS6;
   if (!(opts.step >= 0 && opts.step < STEPS.length)) opts.step = 0;
+  function pctOf(i) { return Math.round(STEPS[i] * 200) / 2 + '%'; }
   function stepWatts(i) { return opts.target * STEPS[i]; }
   // The shape the steps scale: the builder's (null) or a loaded profile.
   var shape = null;
@@ -677,7 +682,7 @@ details[open] summary { margin-bottom: 10px; }
   }
 
   // ---------- builder ----------
-  function stepName(i) { return 'Step ' + (i + 1) + ' (' + Math.round(STEPS[i] * 100) + '%) · ' + fmtW(stepWatts(i)) + ' W · ' + (shape ? shape.name : P.LOOKS[opts.look].label); }
+  function stepName(i) { return 'Step ' + (i + 1) + ' (' + pctOf(i) + ') · ' + fmtW(stepWatts(i)) + ' W · ' + (shape ? shape.name : P.LOOKS[opts.look].label); }
   function fileName(name) { return name.replace(/[^A-Za-z0-9%]+/g, '-').replace(/%/g, 'pct').replace(/^-|-$/g, '') + '.png'; }
   function fmtW(w) { return w < 10 ? w.toFixed(1) : String(Math.round(w)); }
   function drawWatts() {
@@ -705,11 +710,13 @@ details[open] summary { margin-bottom: 10px; }
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
       return '<button type="button" role="radio" data-look="' + k + '" aria-checked="' + (k === opts.look) + '">' + P.LOOKS[k].label + '</button>';
     }).join('');
+    document.querySelectorAll('[data-fine]').forEach(function (b) { b.setAttribute('aria-checked', (b.getAttribute('data-fine') === '1') === !!opts.fine); });
+    $('set-n').textContent = STEPS.length;
     $('steps').innerHTML = STEPS.map(function (r, i) {
       return '<button type="button" role="radio" data-step="' + i + '" aria-checked="' + (i === opts.step) + '"><b>' + (i + 1) + '</b><small>' + fmtW(stepWatts(i)) + ' W</small></button>';
     }).join('');
     var off = offHour(), ok = shape ? true : off <= 24;
-    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + Math.round(STEPS[opts.step] * 100) + '% of your target). ' +
+    $('step-note').textContent = 'Step ' + (opts.step + 1) + ' aims for ' + fmtW(stepWatts(opts.step)) + ' W (' + pctOf(opts.step) + ' of your target). ' +
       (opts.step === 0 ? 'Start here when acclimating.' : opts.step === STEPS.length - 1 ? 'Your full target, for corals already used to this light.' : 'When acclimating, move up after a week or two of happy corals on the step below.');
     var sid = shapeId();
     $('shape-pick').innerHTML = '<option value="">The builder\'s curve (set below)</option>' +
@@ -781,6 +788,13 @@ details[open] summary { margin-bottom: 10px; }
   $('down').addEventListener('change', function () { opts.down = +this.value; builderChange(); });
   $('warm').addEventListener('change', function () { opts.warm = this.checked; builderChange(); });
   $('look').addEventListener('click', function (e) { var k = e.target.closest('[data-look]'); if (k) { opts.look = k.getAttribute('data-look'); builderChange(); } });
+  // Switching keeps the same strength: step k of 6 is step 2k of 11; a half step drops to the 6-step one below it.
+  $('fine').addEventListener('click', function (e) {
+    var k = e.target.closest('[data-fine]'); if (!k) return;
+    var fine = k.getAttribute('data-fine') === '1'; if (fine === !!opts.fine) return;
+    opts.step = fine ? opts.step * 2 : Math.floor(opts.step / 2);
+    opts.fine = fine; STEPS = fine ? STEPS11 : STEPS6; builderChange();
+  });
   $('steps').addEventListener('click', function (e) { var k = e.target.closest('[data-step]'); if (k) { opts.step = +k.getAttribute('data-step'); builderChange(); } });
   $('btn-build').addEventListener('click', useBuilt);
   $('fixture').addEventListener('change', function () { var v = +this.value; opts.fixture = v > 0 ? v : 100; builderChange(); drawWatts(); });

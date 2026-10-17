@@ -15,9 +15,11 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    one point per hour), and a color look. Then pick one of 6 strength steps: step 6 is the full target, and
    steps 1 to 5 (25%, 40%, 55%, 70%, 85%) are for acclimating a new tank or new
    corals; start below where they look happiest and move up a step every
-   week or two while they stay happy. The builder never goes
+   week or two while they stay happy. If a 15-point jump is too big, switch to
+   **11 half steps** (25%, 32.5%, 40%, ... 100%), which keeps the six steps
+   and adds one between each pair. The builder never goes
    above the target.
-   Or tap **Make all 6 steps**, then **Save all** to save every image at once
+   Or tap **Make all steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
    **Start from** picks the curve the steps scale: the builder's own (set by the
    times and color), one of the Noo-Psyche stock profiles (LPS, mixed, SPS), or
