@@ -21,7 +21,7 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    above the target.
    Or tap **Make all steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
-   **Start from** picks the curve the steps scale: the **Simple profile** (set by the
+   **Start from** picks the curve the steps scale: the **Custom profile** (set by the
    times and color), one of the Noo-Psyche stock profiles (LPS, mixed, SPS), or
    BeanAnimal's S/L profile. A stock or community profile keeps its own timing,
    colors and moonlight, and each step scales it to your target. To start from
