@@ -19,10 +19,14 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    above the target.
    Or tap **Make all 6 steps**, then **Save all** to save every image at once
    (the share sheet on phones, a .zip elsewhere).
-   **Or load** an exported QR image from Photos or one of the built-in
-   Noo-Psyche stock profiles (LPS, mixed, SPS) or BeanAnimal's S/L profile, and tap **Use as shape for the steps**: the steps then scale that
-   profile's own curve (timing, colors, moonlight) to your target instead of the
-   builder's.
+   **Start from** picks the curve the steps scale: the builder's own (set by the
+   times and color), one of the Noo-Psyche stock profiles (LPS, mixed, SPS), or
+   BeanAnimal's S/L profile. A stock or community profile keeps its own timing,
+   colors and moonlight, and each step scales it to your target. To start from
+   an exported QR, load it below and tap **Start from this curve**.
+   While the curve shows the builder's output, changing the target, step or
+   shape redraws it straight away; once you edit the curve by hand, tap
+   **Use this profile** to rebuild.
 2. **Inspect and edit**: tap or drag on the curve to read every channel at that
    time. Drag the channel limits, type values into the hourly grid, or shift
    and scale the curve with the bulk buttons.
