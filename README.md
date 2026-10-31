@@ -12,7 +12,8 @@ Open `index.html` in a browser (or serve the folder, e.g. GitHub Pages). It need
    light (or work it out from tank size and number of lights, at about 1 W per
    gallon), the lights-on time, ramp-up, peak and ramp-down hours (e.g.
    1 h / 6 h / 1 h; ramps of 3 h or more are smoothest, since the light holds
-   one point per hour), and a color look. Then pick one of 6 strength steps: step 6 is the full target, and
+   one point per hour; a 0 h ramp switches the light straight on or off, by
+   moving the point just before the switch to :59), and a color look. Then pick one of 6 strength steps: step 6 is the full target, and
    steps 1 to 5 (25%, 40%, 55%, 70%, 85%) are for acclimating a new tank or new
    corals; start below where they look happiest and move up a step every
    week or two while they stay happy. If a 15-point jump is too big, switch to

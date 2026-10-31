@@ -699,14 +699,14 @@ details[open] summary { margin-bottom: 10px; }
     sel.innerHTML = h;
   }
   function durOpts(sel, lo, hi, val) {
-    var h = ''; for (var i = lo; i <= hi; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + i + ' h</option>';
+    var h = ''; for (var i = lo; i <= hi; i++) h += '<option value="' + i + '"' + (i === val ? ' selected' : '') + '>' + (i === 0 ? '0 h (instant)' : i + ' h') + '</option>';
     sel.innerHTML = h;
   }
   function drawBuilder() {
     $('target').value = opts.target; $('gal').value = opts.gal; $('lights').value = opts.lights; $('calc-w').textContent = fmtW(calcWatts());
     $('warm').checked = opts.warm; $('fixture').value = opts.fixture;
     hourOpts($('on'), opts.on);
-    durOpts($('up'), 1, 6, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 1, 6, opts.down);
+    durOpts($('up'), 0, 6, opts.up); durOpts($('peakh'), 1, 14, opts.peak); durOpts($('down'), 0, 6, opts.down);
     $('look').innerHTML = Object.keys(P.LOOKS).map(function (k) {
       return '<button type="button" role="radio" data-look="' + k + '" aria-checked="' + (k === opts.look) + '">' + P.LOOKS[k].label + '</button>';
     }).join('');
@@ -731,8 +731,13 @@ details[open] summary { margin-bottom: 10px; }
       ? 'Total ' + (off - opts.on) + ' h of light, ' + pad(opts.on) + ':00–' + pad(off % 24) + ':00: ' + opts.up + ' h ramp up, ' +
         opts.peak + ' h at peak (' + pad(opts.on + opts.up) + ':00–' + pad(opts.on + opts.up + opts.peak) + ':00), ' + opts.down + ' h ramp down.'
       : 'That day runs past midnight (lights off at ' + pad(off % 24) + ':00 the next day). Start earlier or shorten the peak.';
-    if (ok && Math.min(opts.up, opts.down) < 3) sum.textContent += ' The light holds one point per hour, so a ' + Math.min(opts.up, opts.down) +
-      ' h ramp has ' + (Math.min(opts.up, opts.down) === 1 ? 'no in-between points and is a straight fade' : 'one in-between point') + '. Ramps of 3 h or more follow a smooth S-curve.';
+    var instant = [opts.up === 0 ? 'on' : '', opts.down === 0 ? 'off' : ''].filter(Boolean);
+    if (ok && instant.length) sum.textContent += ' A 0 h ramp switches the light straight ' + instant.join(' and ') +
+      ' with no fade: the point just before the switch sits at :59, so the change takes one minute.';
+    var shortRamp = [opts.up, opts.down].filter(function (r) { return r > 0; });
+    var minRamp = shortRamp.length ? Math.min.apply(null, shortRamp) : 3;
+    if (ok && minRamp < 3) sum.textContent += ' The light holds one point per hour, so a ' + minRamp +
+      ' h ramp has ' + (minRamp === 1 ? 'no in-between points and is a straight fade' : 'one in-between point') + '. Ramps of 3 h or more follow a smooth S-curve.';
     sum.className = ok ? 'note' : 'status err';
     $('btn-build').disabled = $('btn-set').disabled = !ok;
     $('warm').disabled = opts.down < 2;
