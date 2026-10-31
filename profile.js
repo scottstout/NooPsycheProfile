@@ -115,18 +115,27 @@
   /*
    * Lay out a builder profile at scale k (percent for a mix weight of 1).
    *   on, off      whole hours; the light is at 0 at both and lit between them
-   *   rampUp       hours to fade in (from 0 at `on` to full), on an S-curve
-   *   rampDown     hours to fade out (from full to 0 at `off`)
+   *   rampUp       hours to fade in (from 0 at `on` to full), on an S-curve;
+   *                0 snaps on at `on` (dark until on-1:59, full at on:00)
+   *   rampDown     hours to fade out (from full to 0 at `off`); 0 snaps off
+   *                at `off` (full until off-1:59, dark at off:00)
    *   warmEvening  blues/UV/cyan fade faster than white/red/green after the peak
    */
+  // Ramp length in whole hours: 0 (instant) to any length; missing means 2.
+  function rampLen(v, fallback) {
+    v = v != null ? v : fallback;
+    return v == null ? 2 : Math.max(0, Math.round(v));
+  }
+  function ramps(o) { return { up: rampLen(o.rampUp, o.ramp), down: rampLen(o.rampDown, o.ramp) }; }
+
   // Per-slot, per-channel weight w so that each value is round(k * w).
   function weights(o) {
     var mix = (LOOKS[o.look] || LOOKS.balanced).mix;
-    var up = Math.max(1, o.rampUp || o.ramp || 2), down = Math.max(1, o.rampDown || o.ramp || 2);
+    var r = ramps(o), up = r.up, down = r.down;
     var rows = [];
     for (var h = 0; h < 24; h++) {
       var f = 0, evening = false;
-      if (h > o.on && h < o.off) {
+      if ((up === 0 ? h >= o.on : h > o.on) && h < o.off) {
         if (h - o.on < up) f = ease((h - o.on) / up);
         else if (o.off - h < down) { f = ease((o.off - h) / down); evening = true; }
         else f = 1;
@@ -136,9 +145,25 @@
     return rows;
   }
 
+  /*
+   * Minute each hourly point sits at. Every point is on the hour, except that
+   * an instant ramp moves the point just before the switch to :59, so the
+   * light holds dark (ramp up) or full (ramp down) until a minute before it
+   * switches instead of fading across that hour.
+   */
+  function minutes(o) {
+    var r = ramps(o), m = [];
+    for (var h = 0; h < 24; h++) m.push(0);
+    var allDay = o.off - o.on >= 24;
+    if (!allDay && r.down === 0 && o.off >= 1) m[o.off - 1] = 59;
+    if (!allDay && r.up === 0) m[(o.on + 23) % 24] = 59;
+    return m;
+  }
+
   function render(o, k) {
-    var w = weights(o), p = blank();
+    var w = weights(o), m = minutes(o), p = blank();
     p.slots.forEach(function (s, h) {
+      s.minute = m[h];
       s.values = w[h].map(function (x) { return Math.max(0, Math.min(100, Math.round(k * x))); });
     });
     return p;
@@ -170,24 +195,32 @@
     var p = profile, n = PRO3_CHANNELS.length;
     if (p.channels.length !== n || p.slots.length !== 24) return null;
     if (p.limits.some(function (v) { return v !== 100; })) return null;
-    for (var i = 0; i < 24; i++) if (p.slots[i].hour !== i || p.slots[i].minute !== 0) return null;
+    for (var i = 0; i < 24; i++) if (p.slots[i].hour !== i) return null;
     var lit = p.slots.map(function (s) { return s.values.some(function (v) { return v > 0; }); });
     var first = lit.indexOf(true), last = lit.lastIndexOf(true);
     if (first < 0) return null;
     // The dimmest ramp points can round to 0, so the true on/off may sit up to two hours further out.
+    // An instant ramp has no dim points, so its on/off sits right at the lit edge.
     var looks = Object.keys(LOOKS);
     for (var ex = 0; ex <= 4; ex++) for (var eOn = 0; eOn <= Math.min(2, ex); eOn++) {
-      var on = first - 1 - eOn, off = last + 1 + (ex - eOn);
-      if (on < 0 || off > 24 || ex - eOn > 2) continue;
-      for (var up = 1; up <= 6; up++) for (var down = 1; down <= 6; down++) {
-        if (off - on - up - down < 1) continue;
+      var eOff = ex - eOn;
+      if (eOff > 2) continue;
+      for (var up = 0; up <= 6; up++) for (var down = 0; down <= 6; down++) {
+        if ((up === 0 && eOn) || (down === 0 && eOff)) continue;
+        var on = first - (up === 0 ? 0 : 1) - eOn, off = last + 1 + eOff;
+        if (on < 0 || off > 24 || off - on - up - down < 1) continue;
         for (var li = 0; li < looks.length; li++) for (var w = 1; w >= 0; w--) {
           var o = { look: looks[li], on: on, off: off, rampUp: up, rampDown: down, warmEvening: !!w };
-          if (scaleFits(weights(o), p)) return o;
+          if (minutesFit(minutes(o), p) && scaleFits(weights(o), p)) return o;
         }
       }
     }
     return null;
+  }
+
+  function minutesFit(m, p) {
+    for (var h = 0; h < 24; h++) if (p.slots[h].minute !== m[h]) return false;
+    return true;
   }
 
   // Is there one scale k with round(k * w) equal to every value? Intersect the allowed k ranges.
@@ -251,6 +284,8 @@
     else {
       out.start = pts[(best.at - 1 + n) % n].t;
       out.end = pts[(best.at + best.len) % n].t;
+      // A one-minute step (an instant ramp) counts as switching at the later point.
+      if (gap(out.start, pts[best.at].t) <= 1) out.start = pts[best.at].t;
       out.total = gap(out.start, out.end) || 1440;
     }
     // Main: the run of points within 2% of the peak draw, inside the day.
@@ -260,6 +295,7 @@
     out.moonlight = night;
     var hi = runIdx.filter(function (ix) { return pts[ix].w >= topW * 0.98; });
     out.mainStart = pts[hi[0]].t; out.mainEnd = pts[hi[hi.length - 1]].t;
+    if (best.len < n && gap(out.mainEnd, out.end) <= 1) out.mainEnd = out.end;
     out.main = gap(out.mainStart, out.mainEnd);
     return out;
   }
